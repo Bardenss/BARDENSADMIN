@@ -1,0 +1,159 @@
+-- Gui buatan Bardenss
+
+-- hapus GUI lama kalau ada
+if game.CoreGui:FindFirstChild("BardenssUI") then
+    game.CoreGui.BardenssUI:Destroy()
+end
+
+-- ScreenGui
+local gui = Instance.new("ScreenGui")
+gui.Name = "BardenssUI"
+gui.ResetOnSpawn = false
+gui.Parent = game.CoreGui
+
+-- Animasi teks Bardenss
+local textLabel = Instance.new("TextLabel")
+textLabel.Parent = gui
+textLabel.Size = UDim2.new(1,0,0.2,0)
+textLabel.Position = UDim2.new(0,0,0.4,0)
+textLabel.BackgroundTransparency = 1
+textLabel.Text = "Bardenss"
+textLabel.TextColor3 = Color3.fromRGB(255,105,180) -- pink lucu
+textLabel.TextScaled = true
+textLabel.Font = Enum.Font.Cartoon -- bubble/cute style
+
+-- animasi muncul & hilang
+textLabel.TextTransparency = 1
+task.spawn(function()
+    for i = 1,0,-0.1 do
+        textLabel.TextTransparency = i
+        task.wait(0.05)
+    end
+    task.wait(2) -- tampil 2 detik
+    for i = 0,1,0.1 do
+        textLabel.TextTransparency = i
+        task.wait(0.05)
+    end
+    textLabel:Destroy()
+end)
+
+-- buat frame bar utama
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0,200,0,100)
+frame.Position = UDim2.new(0,20,0,200)
+frame.BackgroundColor3 = Color3.fromRGB(255,200,230)
+frame.Visible = false
+frame.Parent = gui
+
+-- tombol minimize
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Size = UDim2.new(0,25,0,25)
+minimizeBtn.Position = UDim2.new(1,-30,0,5)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(255,150,200)
+minimizeBtn.Text = "-"
+minimizeBtn.Parent = frame
+
+-- tombol fly
+local flyBtn = Instance.new("TextButton")
+flyBtn.Size = UDim2.new(0,160,0,40)
+flyBtn.Position = UDim2.new(0,20,0,40)
+flyBtn.BackgroundColor3 = Color3.fromRGB(255,180,220)
+flyBtn.Text = "Fly"
+flyBtn.Font = Enum.Font.Cartoon
+flyBtn.TextSize = 20
+flyBtn.Parent = frame
+
+-- icon B (untuk restore)
+local icon = Instance.new("TextButton")
+icon.Size = UDim2.new(0,40,0,40)
+icon.Position = UDim2.new(0,20,0,200)
+icon.Text = "B"
+icon.Font = Enum.Font.Cartoon
+icon.TextSize = 24
+icon.BackgroundColor3 = Color3.fromRGB(255,150,200)
+icon.Visible = false
+icon.Parent = gui
+
+-- event tombol
+minimizeBtn.MouseButton1Click:Connect(function()
+    frame.Visible = false
+    icon.Visible = true
+end)
+
+icon.MouseButton1Click:Connect(function()
+    frame.Visible = true
+    icon.Visible = false
+end)
+
+-- tampilkan bar setelah animasi teks selesai
+task.delay(2.5, function()
+    frame.Visible = true
+end)
+
+----------------------------------------------------------------
+-- FLY SCRIPT
+----------------------------------------------------------------
+local player = game.Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local flying = false
+local speed = 60
+local moveDir = Vector3.zero
+
+local function startFly()
+    if flying then return end
+    flying = true
+
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local hrp = char.HumanoidRootPart
+
+    local bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(1e5,1e5,1e5)
+    bv.Velocity = Vector3.zero
+    bv.Parent = hrp
+
+    local bg = Instance.new("BodyGyro")
+    bg.MaxTorque = Vector3.new(1e5,1e5,1e5)
+    bg.CFrame = hrp.CFrame
+    bg.P = 1e5
+    bg.Parent = hrp
+
+    RunService.RenderStepped:Connect(function()
+        if not flying then
+            bv:Destroy()
+            bg:Destroy()
+            return
+        end
+
+        local camCF = workspace.CurrentCamera.CFrame
+        local dir = Vector3.zero
+        if UIS:IsKeyDown(Enum.KeyCode.W) then dir = dir + camCF.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then dir = dir - camCF.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then dir = dir - camCF.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then dir = dir + camCF.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0,1,0) end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir = dir - Vector3.new(0,1,0) end
+
+        if dir.Magnitude > 0 then
+            dir = dir.Unit * speed
+        end
+        bv.Velocity = dir
+        bg.CFrame = CFrame.new(hrp.Position, hrp.Position + camCF.LookVector)
+    end)
+end
+
+local function stopFly()
+    flying = false
+end
+
+flyBtn.MouseButton1Click:Connect(function()
+    if not flying then
+        startFly()
+        flyBtn.Text = "UnFly"
+    else
+        stopFly()
+        flyBtn.Text = "Fly"
+    end
+end)
