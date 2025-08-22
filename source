@@ -1,85 +1,135 @@
---// GUI
-local ScreenGui = Instance.new("ScreenGui")
-local Frame = Instance.new("Frame")
-local Toggle = Instance.new("TextButton")
-
-ScreenGui.Parent = game:GetService("CoreGui")
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-Frame.Parent = ScreenGui
-Frame.BackgroundColor3 = Color3.fromRGB(255, 182, 193)
-Frame.Size = UDim2.new(0, 150, 0, 50)
-Frame.Position = UDim2.new(0, 100, 0, 200)
-
-Toggle.Parent = Frame
-Toggle.BackgroundColor3 = Color3.fromRGB(255, 105, 180)
-Toggle.Size = UDim2.new(1, 0, 1, 0)
-Toggle.Text = "Toggle Fly"
-Toggle.TextScaled = true
-Toggle.TextColor3 = Color3.fromRGB(255,255,255)
-
---// Fly Script
+-- // Services
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local hum = char:WaitForChild("Humanoid")
-local hrp = char:WaitForChild("HumanoidRootPart")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
 
+-- // Fly Vars
+local velocityHandlerName = "FlyVelocity_"..math.random(1000,9999)
+local gyroHandlerName = "FlyGyro_"..math.random(1000,9999)
 local flying = false
-local flySpeed = 60
-local bv, bg
+local flySpeed = 100
 
--- Fungsi mulai fly
-local function startFly()
-	flying = true
-	hum.PlatformStand = true
-	
-	bv = Instance.new("BodyVelocity")
-	bv.MaxForce = Vector3.new(1e5,1e5,1e5)
-	bv.Velocity = Vector3.zero
-	bv.Parent = hrp
-	
-	bg = Instance.new("BodyGyro")
-	bg.MaxTorque = Vector3.new(1e5,1e5,1e5)
-	bg.CFrame = hrp.CFrame
-	bg.P = 9e4
-	bg.Parent = hrp
-	
-	-- loop gerak
-	while flying and task.wait() do
-		local cam = workspace.CurrentCamera
-		local moveDir = hum.MoveDirection
-		
-		-- ambil basis kamera
-		local forward = cam.CFrame.LookVector
-		local right = cam.CFrame.RightVector
-		
-		-- proyeksi arah input joystick ke basis kamera
-		local dir = (forward * moveDir.Z) + (right * moveDir.X)
-		
-		-- set velocity
-		bv.Velocity = dir * flySpeed
-		
-		-- rotasi ikut kamera
-		bg.CFrame = CFrame.new(hrp.Position, hrp.Position + forward)
-	end
+-- // Helpers
+local function getRoot(char)
+	return char and char:FindFirstChild("HumanoidRootPart")
 end
 
--- Fungsi stop fly
+-- // Start Fly
+local function mobileFly()
+	if flying then return end
+	local char = LocalPlayer.Character
+	local root = getRoot(char)
+	if not root then return end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum then return end
+
+	flying = true
+	local camera = workspace.CurrentCamera
+
+	-- Disable fall damage
+	hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+	hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+	hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
+	hum:ChangeState(Enum.HumanoidStateType.Physics)
+
+	-- BodyVelocity
+	local bv = Instance.new("BodyVelocity")
+	bv.Name = velocityHandlerName
+	bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+	bv.Velocity = Vector3.zero
+	bv.Parent = root
+
+	-- BodyGyro
+	local bg = Instance.new("BodyGyro")
+	bg.Name = gyroHandlerName
+	bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+	bg.P = 1000
+	bg.D = 50
+	bg.Parent = root
+
+	-- Ambil ControlModule roblox (joystick bawaan)
+	local controlModule = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule"))
+
+	-- Loop
+	RunService.RenderStepped:Connect(function()
+		if not flying or not root or not bv or not bg then return end
+		local moveDir = controlModule:GetMoveVector()
+		bg.CFrame = camera.CFrame
+
+		local vel = Vector3.zero
+		if moveDir.Magnitude > 0 then
+			vel = (camera.CFrame.RightVector * moveDir.X + camera.CFrame.LookVector * -moveDir.Z) * flySpeed
+		end
+		bv.Velocity = vel
+
+		-- pastikan terus state aman
+		if hum then
+			hum:ChangeState(Enum.HumanoidStateType.Physics)
+		end
+	end)
+end
+
+-- // Stop Fly
 local function stopFly()
 	flying = false
-	hum.PlatformStand = false
-	if bv then bv:Destroy() end
-	if bg then bg:Destroy() end
+	local char = LocalPlayer.Character
+	if char then
+		local root = getRoot(char)
+		if root then
+			if root:FindFirstChild(velocityHandlerName) then root[velocityHandlerName]:Destroy() end
+			if root:FindFirstChild(gyroHandlerName) then root[gyroHandlerName]:Destroy() end
+		end
+		local hum = char:FindFirstChildWhichIsA("Humanoid")
+		if hum then
+			-- balikkin state normal (biar bisa lari/jalan)
+			hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+			hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+			hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
+	end
 end
 
--- Toggle button
-Toggle.MouseButton1Click:Connect(function()
-	if flying then
-		stopFly()
-		Toggle.Text = "Toggle Fly"
-	else
-		startFly()
-		Toggle.Text = "Stop Fly"
-	end
+-- // GUI Bardenss
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0,200,0,50)
+Frame.Position = UDim2.new(0.5,-100,0,100)
+Frame.BackgroundColor3 = Color3.fromRGB(255,200,255)
+Frame.Active = true
+Frame.Draggable = true
+
+local flyBtn = Instance.new("TextButton", Frame)
+flyBtn.Size = UDim2.new(0.5,0,1,0)
+flyBtn.Position = UDim2.new(0,0,0,0)
+flyBtn.Text = "Fly"
+flyBtn.BackgroundColor3 = Color3.fromRGB(200,255,200)
+
+local unflyBtn = Instance.new("TextButton", Frame)
+unflyBtn.Size = UDim2.new(0.5,0,1,0)
+unflyBtn.Position = UDim2.new(0.5,0,0,0)
+unflyBtn.Text = "UnFly"
+unflyBtn.BackgroundColor3 = Color3.fromRGB(255,200,200)
+
+-- // Connections
+flyBtn.MouseButton1Click:Connect(function()
+	mobileFly()
 end)
+
+unflyBtn.MouseButton1Click:Connect(function()
+	stopFly()
+end)
+
+-- // Animasi tulisan Bardenss (2 detik)
+local animLabel = Instance.new("TextLabel", ScreenGui)
+animLabel.Size = UDim2.new(0,300,0,50)
+animLabel.Position = UDim2.new(0.5,-150,0.5,-25)
+animLabel.BackgroundTransparency = 1
+animLabel.Text = "Ｂａｒｄｅｎｓｓ"
+animLabel.TextColor3 = Color3.fromRGB(255,150,255)
+animLabel.Font = Enum.Font.Fantasy
+animLabel.TextScaled = true
+
+game:GetService("TweenService"):Create(animLabel, TweenInfo.new(2), {TextTransparency = 1}):Play()
+task.wait(2)
+animLabel:Destroy()
