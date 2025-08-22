@@ -186,6 +186,24 @@ local function refreshCheckpointList()
 	end
 end
 
+local coordLabel = Instance.new("TextLabel", ScreenGui)
+coordLabel.Size = UDim2.new(0,200,0,25)
+coordLabel.Position = UDim2.new(0.5,-100,0,180+210) -- di bawah list / frame
+coordLabel.BackgroundColor3 = Color3.fromRGB(230,230,230)
+coordLabel.TextColor3 = Color3.fromRGB(0,0,0)
+coordLabel.TextScaled = true
+coordLabel.Text = "Koordinat: (0,0,0)"
+
+-- Update realtime
+RunService.RenderStepped:Connect(function()
+	local char = LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root then
+		local pos = root.Position
+		coordLabel.Text = string.format("Koordinat: (%.1f, %.1f, %.1f)", pos.X, pos.Y, pos.Z)
+	end
+end)
+
 -- // Connections
 flyBtn.MouseButton1Click:Connect(mobileFly)
 unflyBtn.MouseButton1Click:Connect(stopFly)
