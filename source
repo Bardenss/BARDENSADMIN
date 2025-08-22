@@ -90,34 +90,113 @@ local function stopFly()
 	end
 end
 
--- // GUI Bardenss
+-- // GUI Utama
 local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
 local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0,200,0,50)
+Frame.Size = UDim2.new(0,200,0,75)
 Frame.Position = UDim2.new(0.5,-100,0,100)
 Frame.BackgroundColor3 = Color3.fromRGB(255,200,255)
 Frame.Active = true
 Frame.Draggable = true
 
+-- Tombol Fly
 local flyBtn = Instance.new("TextButton", Frame)
-flyBtn.Size = UDim2.new(0.5,0,1,0)
+flyBtn.Size = UDim2.new(0.33,0,1,0)
 flyBtn.Position = UDim2.new(0,0,0,0)
 flyBtn.Text = "Fly"
 flyBtn.BackgroundColor3 = Color3.fromRGB(200,255,200)
 
+-- Tombol UnFly
 local unflyBtn = Instance.new("TextButton", Frame)
-unflyBtn.Size = UDim2.new(0.5,0,1,0)
-unflyBtn.Position = UDim2.new(0.5,0,0,0)
+unflyBtn.Size = UDim2.new(0.33,0,1,0)
+unflyBtn.Position = UDim2.new(0.33,0,0,0)
 unflyBtn.Text = "UnFly"
 unflyBtn.BackgroundColor3 = Color3.fromRGB(255,200,200)
 
--- // Connections
-flyBtn.MouseButton1Click:Connect(function()
-	mobileFly()
+-- Tombol Teleport
+local teleportBtn = Instance.new("TextButton", Frame)
+teleportBtn.Size = UDim2.new(0.34,0,1,0)
+teleportBtn.Position = UDim2.new(0.66,0,0,0)
+teleportBtn.Text = "Teleport"
+teleportBtn.BackgroundColor3 = Color3.fromRGB(200,200,255)
+
+-- // ScrollingFrame list checkpoint
+local listFrame = Instance.new("ScrollingFrame", ScreenGui)
+listFrame.Size = UDim2.new(0,200,0,200)
+listFrame.Position = UDim2.new(0.5,-100,0,180)
+listFrame.BackgroundColor3 = Color3.fromRGB(240,240,255)
+listFrame.Visible = false
+listFrame.Active = true
+listFrame.Draggable = true
+listFrame.ScrollBarThickness = 6
+listFrame.CanvasSize = UDim2.new(0,0,0,0)
+
+local uiList = Instance.new("UIListLayout", listFrame)
+uiList.SortOrder = Enum.SortOrder.LayoutOrder
+uiList.Padding = UDim.new(0,2)
+
+uiList.Changed:Connect(function()
+	listFrame.CanvasSize = UDim2.new(0,0,0,uiList.AbsoluteContentSize.Y)
 end)
 
-unflyBtn.MouseButton1Click:Connect(function()
-	stopFly()
+-- Tombol Close di listFrame
+local closeBtn = Instance.new("TextButton", listFrame)
+closeBtn.Size = UDim2.new(1,0,0,25)
+closeBtn.Text = "X Tutup"
+closeBtn.BackgroundColor3 = Color3.fromRGB(255,180,180)
+
+closeBtn.MouseButton1Click:Connect(function()
+	listFrame.Visible = false
+end)
+
+-- // Ambil semua checkpoint
+local function getCheckpoints()
+	local checkpoints = {}
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("SpawnLocation") or obj.Name:lower():match("checkpoint") then
+			table.insert(checkpoints, obj)
+		end
+	end
+	return checkpoints
+end
+
+-- // Refresh tombol checkpoint
+local function refreshCheckpointList()
+	-- hapus tombol lama (selain tombol close)
+	for _, child in pairs(listFrame:GetChildren()) do
+		if child:IsA("TextButton") and child ~= closeBtn then
+			child:Destroy()
+		end
+	end
+
+	local checkpoints = getCheckpoints()
+	for i, cp in ipairs(checkpoints) do
+		local btn = Instance.new("TextButton", listFrame)
+		btn.Size = UDim2.new(1,0,0,25)
+		btn.Text = i..". "..cp.Name
+		btn.BackgroundColor3 = Color3.fromRGB(220,220,240)
+
+		btn.MouseButton1Click:Connect(function()
+			local char = LocalPlayer.Character
+			local root = char and char:FindFirstChild("HumanoidRootPart")
+			if root and cp then
+				root.CFrame = cp.CFrame + Vector3.new(0,5,0) -- naik 5 stud biar ga nyangkut
+			end
+		end)
+	end
+end
+
+-- // Connections
+flyBtn.MouseButton1Click:Connect(mobileFly)
+unflyBtn.MouseButton1Click:Connect(stopFly)
+
+teleportBtn.MouseButton1Click:Connect(function()
+	if listFrame.Visible then
+		listFrame.Visible = false
+	else
+		refreshCheckpointList()
+		listFrame.Visible = true
+	end
 end)
 
 -- // Animasi tulisan Bardenss (2 detik)
@@ -130,6 +209,6 @@ animLabel.TextColor3 = Color3.fromRGB(255,150,255)
 animLabel.Font = Enum.Font.Fantasy
 animLabel.TextScaled = true
 
-game:GetService("TweenService"):Create(animLabel, TweenInfo.new(2), {TextTransparency = 1}):Play()
+TweenService:Create(animLabel, TweenInfo.new(2), {TextTransparency = 1}):Play()
 task.wait(2)
 animLabel:Destroy()
