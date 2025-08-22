@@ -16,7 +16,7 @@ local function getRoot(char)
 end
 
 -- // Start Fly
-local function mobileFly()
+local function startFly()
 	if flying then return end
 	local char = LocalPlayer.Character
 	local root = getRoot(char)
@@ -64,7 +64,6 @@ local function mobileFly()
 	end)
 end
 
--- // Stop Fly
 local function stopFly()
 	flying = false
 	local char = LocalPlayer.Character
@@ -84,188 +83,214 @@ local function stopFly()
 	end
 end
 
--- // GUI
-local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
-ScreenGui.Name = "CustomMenu"
+-- // GUI Creation
+local function createGui()
+	local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+	ScreenGui.Name = "CustomMenu"
 
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 250, 0, 350)
-MainFrame.Position = UDim2.new(0.5, -125, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-MainFrame.Active = true
-MainFrame.Draggable = true
-
-local stroke = Instance.new("UIStroke", MainFrame)
-stroke.Thickness = 5
-stroke.Color = Color3.fromRGB(255, 200, 255)
-
-local corner = Instance.new("UICorner", MainFrame)
-corner.CornerRadius = UDim.new(0, 15)
-
--- Title Bar
-local TitleBar = Instance.new("Frame", MainFrame)
-TitleBar.Size = UDim2.new(1, 0, 0, 40)
-TitleBar.BackgroundTransparency = 1
-
-local VersionLabel = Instance.new("TextLabel", TitleBar)
-VersionLabel.Size = UDim2.new(0.5, 0, 1, 0)
-VersionLabel.Position = UDim2.new(0, 10, 0, 0)
-VersionLabel.Text = "Versi : 0.0.1"
-VersionLabel.Font = Enum.Font.GothamBold
-VersionLabel.TextColor3 = Color3.fromRGB(50, 50, 50)
-VersionLabel.TextScaled = true
-VersionLabel.BackgroundTransparency = 1
-VersionLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-local MinBtn = Instance.new("TextButton", TitleBar)
-MinBtn.Size = UDim2.new(0, 40, 0, 25)
-MinBtn.Position = UDim2.new(1, -45, 0.5, -12)
-MinBtn.Text = "-"
-MinBtn.Font = Enum.Font.GothamBold
-MinBtn.TextScaled = true
-MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 200)
-
-local minCorner = Instance.new("UICorner", MinBtn)
-minCorner.CornerRadius = UDim.new(0, 6)
-
--- Tombol Helper
-local function makeButton(text, yPos)
-	local btn = Instance.new("TextButton", MainFrame)
-	btn.Size = UDim2.new(0.85, 0, 0, 50)
-	btn.Position = UDim2.new(0.5, -100, 0, yPos)
-	btn.Text = text
-	btn.Font = Enum.Font.GothamBold
-	btn.TextScaled = true
-	btn.TextColor3 = Color3.fromRGB(255,255,255)
-	btn.BackgroundColor3 = Color3.fromRGB(50,50,150)
-
-	local corner = Instance.new("UICorner", btn)
-	corner.CornerRadius = UDim.new(0, 12)
-
-	return btn
-end
-
-local FlyBtn = makeButton("TERBANG", 60)
-local StopFlyBtn = makeButton("BERHENTI TERBANG", 120)
-local TeleBtn = makeButton("TELEPORT", 180)
-
--- Frame List Checkpoint
-local listFrame = Instance.new("Frame", ScreenGui)
-listFrame.Size = UDim2.new(0, 200, 0, 200)
-listFrame.Position = UDim2.new(0.5, -100, 0.3, 200)
-listFrame.BackgroundColor3 = Color3.fromRGB(240,240,255)
-listFrame.Visible = false
-local listCorner = Instance.new("UICorner", listFrame)
-listCorner.CornerRadius = UDim.new(0,12)
-
--- Koordinat realtime
-local coordLabel = Instance.new("TextLabel", ScreenGui)
-coordLabel.Size = UDim2.new(0,200,0,25)
-coordLabel.Position = UDim2.new(0.5,-100,0,520)
-coordLabel.BackgroundColor3 = Color3.fromRGB(230,230,230)
-coordLabel.TextColor3 = Color3.fromRGB(0,0,0)
-coordLabel.TextScaled = true
-coordLabel.Text = "Koordinat: (0,0,0)"
-
-RunService.RenderStepped:Connect(function()
-	local char = LocalPlayer.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if root then
-		local pos = root.Position
-		coordLabel.Text = string.format("Koordinat: (%.1f, %.1f, %.1f)", pos.X, pos.Y, pos.Z)
-	end
-end)
-
--- Checkpoint functions
-local function getCheckpoints()
-	local checkpoints = {}
-	for _, obj in pairs(workspace:GetDescendants()) do
-		if obj:IsA("SpawnLocation") or obj.Name:lower():match("checkpoint") then
-			table.insert(checkpoints, obj)
-		end
-	end
-	return checkpoints
-end
-
-local function refreshCheckpointList()
-	for _, child in pairs(listFrame:GetChildren()) do
-		if child:IsA("TextButton") then
-			child:Destroy()
-		end
-	end
-
-	local checkpoints = getCheckpoints()
-	for i, cp in ipairs(checkpoints) do
-		local btn = Instance.new("TextButton", listFrame)
-		btn.Size = UDim2.new(1,0,0,25)
-		btn.Position = UDim2.new(0,0,0,(i-1)*30)
-		btn.Text = i..". "..cp.Name
-		btn.BackgroundColor3 = Color3.fromRGB(220,220,240)
-
-		btn.MouseButton1Click:Connect(function()
-			local char = LocalPlayer.Character
-			local root = char and char:FindFirstChild("HumanoidRootPart")
-			if root and cp then
-				root.CFrame = cp.CFrame + Vector3.new(0,5,0)
-			end
-		end)
-	end
-end
-
--- Logo untuk restore GUI saat minimized
-local OpenLogo = Instance.new("ImageButton", ScreenGui)
-OpenLogo.Size = UDim2.new(0,50,0,50)
-OpenLogo.Position = UDim2.new(0,20,0.5,-25)
-OpenLogo.Image = "rbxassetid://93768214580798" -- Asset BARDENSS-SC
-OpenLogo.Visible = false
-
-local function minimizeGUI()
-	MainFrame.Size = UDim2.new(0,250,0,40)
-	for _, child in pairs(MainFrame:GetChildren()) do
-		if child ~= TitleBar then
-			child.Visible = false
-		end
-	end
-	OpenLogo.Visible = true
-end
-
-local function restoreGUI()
+	local MainFrame = Instance.new("Frame", ScreenGui)
 	MainFrame.Size = UDim2.new(0,250,0,350)
-	for _, child in pairs(MainFrame:GetChildren()) do
-		child.Visible = true
-	end
+	MainFrame.Position = UDim2.new(0.5,-125,0.3,0)
+	MainFrame.BackgroundColor3 = Color3.fromRGB(240,240,240)
+	MainFrame.Active = true
+	MainFrame.Draggable = true
+
+	local stroke = Instance.new("UIStroke", MainFrame)
+	stroke.Thickness = 5
+	stroke.Color = Color3.fromRGB(255,200,255)
+
+	local corner = Instance.new("UICorner", MainFrame)
+	corner.CornerRadius = UDim.new(0,15)
+
+	-- Title
+	local TitleBar = Instance.new("Frame", MainFrame)
+	TitleBar.Size = UDim2.new(1,0,0,40)
+	TitleBar.BackgroundTransparency = 1
+
+	local VersionLabel = Instance.new("TextLabel", TitleBar)
+	VersionLabel.Size = UDim2.new(0.5,0,1,0)
+	VersionLabel.Position = UDim2.new(0,10,0,0)
+	VersionLabel.Text = "Versi: 0.0.1"
+	VersionLabel.Font = Enum.Font.GothamBold
+	VersionLabel.TextColor3 = Color3.fromRGB(50,50,50)
+	VersionLabel.TextScaled = true
+	VersionLabel.BackgroundTransparency = 1
+	VersionLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+	local MinBtn = Instance.new("TextButton", TitleBar)
+	MinBtn.Size = UDim2.new(0,40,0,25)
+	MinBtn.Position = UDim2.new(1,-45,0.5,-12)
+	MinBtn.Text = "-"
+	MinBtn.Font = Enum.Font.GothamBold
+	MinBtn.TextScaled = true
+	MinBtn.TextColor3 = Color3.fromRGB(255,255,255)
+	MinBtn.BackgroundColor3 = Color3.fromRGB(200,100,200)
+	local minCorner = Instance.new("UICorner", MinBtn)
+	minCorner.CornerRadius = UDim.new(0,6)
+
+	-- Logo restore
+	local OpenLogo = Instance.new("ImageButton", ScreenGui)
+	OpenLogo.Size = UDim2.new(0,50,0,50)
+	OpenLogo.Position = UDim2.new(0,20,0.5,-25)
+	OpenLogo.Image = "rbxassetid://93768214580798"
 	OpenLogo.Visible = false
+
+	local function minimizeGUI()
+		MainFrame.Visible = false
+		OpenLogo.Visible = true
+	end
+	local function restoreGUI()
+		MainFrame.Visible = true
+		OpenLogo.Visible = false
+	end
+	MinBtn.MouseButton1Click:Connect(function()
+		if MainFrame.Visible then
+			minimizeGUI()
+		else
+			restoreGUI()
+		end
+	end)
+	OpenLogo.MouseButton1Click:Connect(restoreGUI)
+
+	-- Menu Frames
+	local MenuFrame = Instance.new("Frame", MainFrame)
+	MenuFrame.Size = UDim2.new(1,0,1,0)
+	MenuFrame.BackgroundTransparency = 1
+
+	local FlyFrame = Instance.new("Frame", MainFrame)
+	FlyFrame.Size = UDim2.new(1,0,1,0)
+	FlyFrame.BackgroundTransparency = 1
+	FlyFrame.Visible = false
+
+	local TeleFrame = Instance.new("Frame", MainFrame)
+	TeleFrame.Size = UDim2.new(1,0,1,0)
+	TeleFrame.BackgroundTransparency = 1
+	TeleFrame.Visible = false
+
+	-- Button helper
+	local function makeButton(parent,text,yPos)
+		local btn = Instance.new("TextButton", parent)
+		btn.Size = UDim2.new(0.85,0,0,50)
+		btn.Position = UDim2.new(0.5,-100,0,yPos)
+		btn.Text = text
+		btn.Font = Enum.Font.GothamBold
+		btn.TextScaled = true
+		btn.TextColor3 = Color3.fromRGB(255,255,255)
+		btn.BackgroundColor3 = Color3.fromRGB(50,50,150)
+		local corner = Instance.new("UICorner",btn)
+		corner.CornerRadius = UDim.new(0,12)
+		return btn
+	end
+
+	-- Menu utama buttons
+	local FlyBtn = makeButton(MenuFrame,"TERBANG",60)
+	local TeleBtn = makeButton(MenuFrame,"TELEPORT",140)
+
+	-- Fly Submenu
+	local FlyOnBtn = makeButton(FlyFrame,"ON / OFF FLY",60)
+	local FlyBackBtn = makeButton(FlyFrame,"BACK",220)
+
+	-- Slider Frame
+	local SliderFrame = Instance.new("Frame",FlyFrame)
+	SliderFrame.Size = UDim2.new(0.8,0,0,50)
+	SliderFrame.Position = UDim2.new(0.1,0,0.5,-25)
+	SliderFrame.BackgroundColor3 = Color3.fromRGB(200,200,200)
+	local sliderCorner = Instance.new("UICorner",SliderFrame)
+	sliderCorner.CornerRadius = UDim.new(0,12)
+
+	local SliderFill = Instance.new("Frame",SliderFrame)
+	SliderFill.Size = UDim2.new(flySpeed/200,0,1,0)
+	SliderFill.BackgroundColor3 = Color3.fromRGB(100,50,250)
+	local fillCorner = Instance.new("UICorner",SliderFill)
+	fillCorner.CornerRadius = UDim.new(0,12)
+
+	local SliderLabel = Instance.new("TextLabel",SliderFrame)
+	SliderLabel.Size = UDim2.new(1,0,1,0)
+	SliderLabel.BackgroundTransparency = 1
+	SliderLabel.TextColor3 = Color3.fromRGB(0,0,0)
+	SliderLabel.TextScaled = true
+	SliderLabel.Text = "Kecepatan: "..flySpeed
+
+	-- Slider drag
+	local dragging = false
+	SliderFrame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+	end)
+	SliderFrame.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+	end)
+	RunService.RenderStepped:Connect(function()
+		if dragging then
+			local mouse = LocalPlayer:GetMouse()
+			local relative = math.clamp((mouse.X - SliderFrame.AbsolutePosition.X)/SliderFrame.AbsoluteSize.X,0,1)
+			SliderFill.Size = UDim2.new(relative,0,1,0)
+			flySpeed = math.floor(relative*200)
+			SliderLabel.Text = "Kecepatan: "..flySpeed
+		end
+	end)
+
+	local flyToggled = false
+	FlyOnBtn.MouseButton1Click:Connect(function()
+		if flyToggled then
+			stopFly()
+			flyToggled = false
+			FlyOnBtn.Text = "ON / OFF FLY"
+		else
+			startFly()
+			flyToggled = true
+			FlyOnBtn.Text = "ON / OFF FLY (ON)"
+		end
+	end)
+	FlyBackBtn.MouseButton1Click:Connect(function()
+		FlyFrame.Visible = false
+		MenuFrame.Visible = true
+	end)
+	FlyBtn.MouseButton1Click:Connect(function()
+		MenuFrame.Visible = false
+		FlyFrame.Visible = true
+	end)
+
+	-- Teleport submenu
+	local TeleBackBtn = makeButton(TeleFrame,"BACK",220)
+	local function getCheckpoints()
+		local checkpoints = {}
+		for _, obj in pairs(workspace:GetDescendants()) do
+			if obj:IsA("SpawnLocation") or obj.Name:lower():match("checkpoint") then
+				table.insert(checkpoints,obj)
+			end
+		end
+		return checkpoints
+	end
+
+	local function refreshCheckpoints()
+		for _,child in pairs(TeleFrame:GetChildren()) do
+			if child:IsA("TextButton") and child ~= TeleBackBtn then child:Destroy() end
+		end
+		local cps = getCheckpoints()
+		for i,cp in ipairs(cps) do
+			local btn = makeButton(TeleFrame,i..". "..cp.Name,60+(i-1)*60)
+			btn.MouseButton1Click:Connect(function()
+				local root = getRoot(LocalPlayer.Character)
+				if root then root.CFrame = cp.CFrame + Vector3.new(0,5,0) end
+			end)
+		end
+	end
+
+	TeleBtn.MouseButton1Click:Connect(function()
+		MenuFrame.Visible = false
+		TeleFrame.Visible = true
+		refreshCheckpoints()
+	end)
+	TeleBackBtn.MouseButton1Click:Connect(function()
+		TeleFrame.Visible = false
+		MenuFrame.Visible = true
+	end)
+
+	-- Persist GUI on respawn
+	LocalPlayer.CharacterAdded:Connect(function()
+		wait(1)
+		if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer.PlayerGui end
+	end)
 end
 
--- Tombol Connections
-FlyBtn.MouseButton1Click:Connect(mobileFly)
-StopFlyBtn.MouseButton1Click:Connect(stopFly)
-TeleBtn.MouseButton1Click:Connect(function()
-	refreshCheckpointList()
-	listFrame.Visible = not listFrame.Visible
-end)
-
-MinBtn.MouseButton1Click:Connect(function()
-	if MainFrame.Size.Y.Offset > 40 then
-		minimizeGUI()
-	else
-		restoreGUI()
-	end
-end)
-
-OpenLogo.MouseButton1Click:Connect(restoreGUI)
-
--- Animasi label Bardenss
-local animLabel = Instance.new("TextLabel", ScreenGui)
-animLabel.Size = UDim2.new(0,300,0,50)
-animLabel.Position = UDim2.new(0.5,-150,0.5,-25)
-animLabel.BackgroundTransparency = 1
-animLabel.Text = "Ｂａｒｄｅｎｓｓ"
-animLabel.TextColor3 = Color3.fromRGB(255,150,255)
-animLabel.Font = Enum.Font.Fantasy
-animLabel.TextScaled = true
-
-TweenService:Create(animLabel, TweenInfo.new(2), {TextTransparency = 1}):Play()
-task.wait(2)
-animLabel:Destroy()
+createGui()
