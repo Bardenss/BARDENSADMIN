@@ -1,113 +1,116 @@
--- ==========================
--- Bardenss 3D Fly Mobile (Android)
--- ==========================
+-- // Services
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
 local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
 
-local hrp = nil
-local hum = nil
+-- // Fly Vars
+local velocityHandlerName = "FlyVelocity_"..math.random(1000,9999)
+local gyroHandlerName = "FlyGyro_"..math.random(1000,9999)
 local flying = false
-local speed = 50
-local flyConn
+local flySpeed = 100
 
--- GUI
-local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-gui.Name = "BardenssFlyUI"
-
-local MainFrame = Instance.new("Frame", gui)
-MainFrame.Size = UDim2.new(0,220,0,120)
-MainFrame.Position = UDim2.new(0,50,0,150)
-MainFrame.BackgroundColor3 = Color3.fromRGB(255,200,230)
-
-local UICorner = Instance.new("UICorner", MainFrame)
-UICorner.CornerRadius = UDim.new(0,12)
-
-local Title = Instance.new("TextLabel", MainFrame)
-Title.Size = UDim2.new(1,0,0,30)
-Title.BackgroundTransparency = 1
-Title.Text = "Bardenss Fly"
-Title.Font = Enum.Font.Cartoon
-Title.TextSize = 20
-
-local FlyButton = Instance.new("TextButton", MainFrame)
-FlyButton.Size = UDim2.new(0,180,0,50)
-FlyButton.Position = UDim2.new(0,20,0,50)
-FlyButton.BackgroundColor3 = Color3.fromRGB(255,180,220)
-FlyButton.Text = "Fly"
-
--- Minimize Button
-local MinimizeButton = Instance.new("TextButton", MainFrame)
-MinimizeButton.Size = UDim2.new(0,25,0,25)
-MinimizeButton.Position = UDim2.new(1,-30,0,5)
-MinimizeButton.Text = "-"
-
-local minimized = false
-MinimizeButton.MouseButton1Click:Connect(function()
-    minimized = not minimized
-    for _,obj in pairs(MainFrame:GetChildren()) do
-        if obj ~= Title and obj ~= MinimizeButton then
-            obj.Visible = not minimized
-        end
-    end
-    MainFrame.Size = minimized and UDim2.new(0,220,0,40) or UDim2.new(0,220,0,120)
-end)
-
--- ==========================
--- Fly Logic (3D, Android Joystick)
--- ==========================
-local function StartFly()
-    hrp = player.Character:WaitForChild("HumanoidRootPart")
-    hum = player.Character:WaitForChildOfClass("Humanoid")
-
-    local bg = Instance.new("BodyGyro", hrp)
-    bg.P = 9e4
-    bg.MaxTorque = Vector3.new(9e9,9e9,9e9)
-    bg.CFrame = hrp.CFrame
-
-    local bv = Instance.new("BodyVelocity", hrp)
-    bv.MaxForce = Vector3.new(9e9,9e9,9e9)
-    bv.Velocity = Vector3.new(0,0,0)
-
-    flyConn = RunService.RenderStepped:Connect(function()
-        if flying and hrp and hum then
-            local camCF = workspace.CurrentCamera.CFrame
-            bg.CFrame = camCF
-
-            local moveDir = hum.MoveDirection
-            local dir = (camCF.LookVector * moveDir.Z) + (camCF.RightVector * moveDir.X) + Vector3.new(0, moveDir.Y, 0)
-            if dir.Magnitude > 0 then
-                dir = dir.Unit * speed
-            end
-            bv.Velocity = dir
-        end
-    end)
+-- // Helpers
+local function getRoot(char)
+	return char and char:FindFirstChild("HumanoidRootPart")
 end
 
-local function StopFly()
-    if hrp and hrp:FindFirstChild("BodyGyro") then hrp.BodyGyro:Destroy() end
-    if hrp and hrp:FindFirstChild("BodyVelocity") then hrp.BodyVelocity:Destroy() end
-    if flyConn then flyConn:Disconnect() flyConn=nil end
+-- // Start Fly
+local function mobileFly()
+	if flying then return end
+	local char = LocalPlayer.Character
+	local root = getRoot(char)
+	if not root then return end
+
+	flying = true
+	local camera = workspace.CurrentCamera
+
+	-- BodyVelocity
+	local bv = Instance.new("BodyVelocity")
+	bv.Name = velocityHandlerName
+	bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+	bv.Velocity = Vector3.zero
+	bv.Parent = root
+
+	-- BodyGyro
+	local bg = Instance.new("BodyGyro")
+	bg.Name = gyroHandlerName
+	bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+	bg.P = 1000
+	bg.D = 50
+	bg.Parent = root
+
+	-- Ambil ControlModule roblox (joystick bawaan)
+	local controlModule = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule"))
+
+	-- Loop
+	RunService.RenderStepped:Connect(function()
+		if not flying or not root or not bv or not bg then return end
+		local moveDir = controlModule:GetMoveVector()
+		bg.CFrame = camera.CFrame
+
+		local vel = Vector3.zero
+		if moveDir.Magnitude > 0 then
+			vel = (camera.CFrame.RightVector * moveDir.X + camera.CFrame.LookVector * -moveDir.Z) * flySpeed
+		end
+		bv.Velocity = vel
+	end)
 end
 
--- Fly toggle
-FlyButton.MouseButton1Click:Connect(function()
-    flying = not flying
-    if flying then
-        FlyButton.Text = "Fly: ON"
-        FlyButton.BackgroundColor3 = Color3.fromRGB(0,200,0)
-        StartFly()
-    else
-        FlyButton.Text = "Fly: OFF"
-        FlyButton.BackgroundColor3 = Color3.fromRGB(200,0,0)
-        StopFly()
-    end
+-- // Stop Fly
+local function stopFly()
+	flying = false
+	local char = LocalPlayer.Character
+	if char then
+		local root = getRoot(char)
+		if root then
+			if root:FindFirstChild(velocityHandlerName) then root[velocityHandlerName]:Destroy() end
+			if root:FindFirstChild(gyroHandlerName) then root[gyroHandlerName]:Destroy() end
+		end
+		local hum = char:FindFirstChildWhichIsA("Humanoid")
+		if hum then hum.PlatformStand = false end
+	end
+end
+
+-- // GUI Bardenss
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0,200,0,50)
+Frame.Position = UDim2.new(0.5,-100,0,100)
+Frame.BackgroundColor3 = Color3.fromRGB(255,200,255)
+Frame.Active = true
+Frame.Draggable = true
+
+local flyBtn = Instance.new("TextButton", Frame)
+flyBtn.Size = UDim2.new(0.5,0,1,0)
+flyBtn.Position = UDim2.new(0,0,0,0)
+flyBtn.Text = "Fly"
+flyBtn.BackgroundColor3 = Color3.fromRGB(200,255,200)
+
+local unflyBtn = Instance.new("TextButton", Frame)
+unflyBtn.Size = UDim2.new(0.5,0,1,0)
+unflyBtn.Position = UDim2.new(0.5,0,0,0)
+unflyBtn.Text = "UnFly"
+unflyBtn.BackgroundColor3 = Color3.fromRGB(255,200,200)
+
+-- // Connections
+flyBtn.MouseButton1Click:Connect(function()
+	mobileFly()
 end)
 
--- Reset saat respawn
-player.CharacterAdded:Connect(function()
-    flying = false
-    StopFly()
-    FlyButton.Text = "Fly"
-    FlyButton.BackgroundColor3 = Color3.fromRGB(255,180,220)
+unflyBtn.MouseButton1Click:Connect(function()
+	stopFly()
 end)
+
+-- // Animasi tulisan Bardenss (2 detik)
+local animLabel = Instance.new("TextLabel", ScreenGui)
+animLabel.Size = UDim2.new(0,300,0,50)
+animLabel.Position = UDim2.new(0.5,-150,0.5,-25)
+animLabel.BackgroundTransparency = 1
+animLabel.Text = "Ｂａｒｄｅｎｓｓ"
+animLabel.TextColor3 = Color3.fromRGB(255,150,255)
+animLabel.Font = Enum.Font.Fantasy
+animLabel.TextScaled = true
+
+game:GetService("TweenService"):Create(animLabel, TweenInfo.new(2), {TextTransparency = 1}):Play()
+task.wait(2)
+animLabel:Destroy()
