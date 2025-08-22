@@ -1,129 +1,92 @@
--- // Services ini
+-- // Services
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
 local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
--- // Fly Vars
-local velocityHandlerName = "FlyVelocity_"..math.random(1000,9999)
-local gyroHandlerName = "FlyGyro_"..math.random(1000,9999)
-local flying = false
-local flySpeed = 100
+-- // GUI
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+ScreenGui.ResetOnSpawn = false
 
--- // Helpers
-local function getRoot(char)
-	return char and char:FindFirstChild("HumanoidRootPart")
-end
+-- Main Frame
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 250, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -125, 0.2, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(240,240,240)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
 
--- // Start Fly
-local function mobileFly()
-	if flying then return end
-	local char = LocalPlayer.Character
-	local root = getRoot(char)
-	if not root then return end
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hum then return end
+-- UI Corner
+local mainCorner = Instance.new("UICorner", MainFrame)
+mainCorner.CornerRadius = UDim.new(0,15)
 
-	flying = true
-	local camera = workspace.CurrentCamera
+-- Label Versi
+local VersionLabel = Instance.new("TextLabel", MainFrame)
+VersionLabel.Size = UDim2.new(0.6,0,0,25)
+VersionLabel.Position = UDim2.new(0.05,0,0.02,0)
+VersionLabel.BackgroundColor3 = Color3.fromRGB(180,180,255)
+VersionLabel.Text = "Versi : 0.0.1"
+VersionLabel.Font = Enum.Font.GothamBold
+VersionLabel.TextSize = 14
+VersionLabel.TextColor3 = Color3.new(1,1,1)
+local vCorner = Instance.new("UICorner", VersionLabel)
+vCorner.CornerRadius = UDim.new(1,0)
 
-	-- Disable fall damage
-	hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-	hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-	hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
-	hum:ChangeState(Enum.HumanoidStateType.Physics)
-
-	-- BodyVelocity
-	local bv = Instance.new("BodyVelocity")
-	bv.Name = velocityHandlerName
-	bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-	bv.Velocity = Vector3.zero
-	bv.Parent = root
-
-	-- BodyGyro
-	local bg = Instance.new("BodyGyro")
-	bg.Name = gyroHandlerName
-	bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-	bg.P = 1000
-	bg.D = 50
-	bg.Parent = root
-
-	-- Ambil ControlModule roblox (joystick bawaan)
-	local controlModule = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule"))
-
-	-- Loop
-	RunService.RenderStepped:Connect(function()
-		if not flying or not root or not bv or not bg then return end
-		local moveDir = controlModule:GetMoveVector()
-		bg.CFrame = camera.CFrame
-
-		local vel = Vector3.zero
-		if moveDir.Magnitude > 0 then
-			vel = (camera.CFrame.RightVector * moveDir.X + camera.CFrame.LookVector * -moveDir.Z) * flySpeed
-		end
-		bv.Velocity = vel
-
-		-- pastikan terus state aman
-		if hum then
-			hum:ChangeState(Enum.HumanoidStateType.Physics)
-		end
-	end)
-end
-
--- // Stop Fly
-local function stopFly()
-	flying = false
-	local char = LocalPlayer.Character
-	if char then
-		local root = getRoot(char)
-		if root then
-			if root:FindFirstChild(velocityHandlerName) then root[velocityHandlerName]:Destroy() end
-			if root:FindFirstChild(gyroHandlerName) then root[gyroHandlerName]:Destroy() end
-		end
-		local hum = char:FindFirstChildWhichIsA("Humanoid")
-		if hum then
-			-- balikkin state normal (biar bisa lari/jalan)
-			hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-			hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
-			hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
-			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-		end
-	end
-end
-
--- // GUI Utama
-local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0,200,0,75)
-Frame.Position = UDim2.new(0.5,-100,0,100)
-Frame.BackgroundColor3 = Color3.fromRGB(255,200,255)
-Frame.Active = true
-Frame.Draggable = true
+-- Tombol Minimize
+local MinBtn = Instance.new("TextButton", MainFrame)
+MinBtn.Size = UDim2.new(0,25,0,25)
+MinBtn.Position = UDim2.new(0.88,0,0.02,0)
+MinBtn.Text = "-"
+MinBtn.BackgroundColor3 = Color3.fromRGB(255,100,100)
+MinBtn.TextColor3 = Color3.new(1,1,1)
+local minCorner = Instance.new("UICorner", MinBtn)
+minCorner.CornerRadius = UDim.new(1,0)
 
 -- Tombol Fly
-local flyBtn = Instance.new("TextButton", Frame)
-flyBtn.Size = UDim2.new(0.33,0,1,0)
-flyBtn.Position = UDim2.new(0,0,0,0)
-flyBtn.Text = "Fly"
-flyBtn.BackgroundColor3 = Color3.fromRGB(200,255,200)
-
--- Tombol UnFly
-local unflyBtn = Instance.new("TextButton", Frame)
-unflyBtn.Size = UDim2.new(0.33,0,1,0)
-unflyBtn.Position = UDim2.new(0.33,0,0,0)
-unflyBtn.Text = "UnFly"
-unflyBtn.BackgroundColor3 = Color3.fromRGB(255,200,200)
+local FlyBtn = Instance.new("TextButton", MainFrame)
+FlyBtn.Size = UDim2.new(0.9,0,0,40)
+FlyBtn.Position = UDim2.new(0.05,0,0.15,0)
+FlyBtn.Text = "TERBANG"
+FlyBtn.Font = Enum.Font.GothamBold
+FlyBtn.TextSize = 18
+FlyBtn.BackgroundColor3 = Color3.fromRGB(90,90,180)
+FlyBtn.TextColor3 = Color3.new(1,1,1)
+local flyCorner = Instance.new("UICorner", FlyBtn)
+flyCorner.CornerRadius = UDim.new(0,10)
 
 -- Tombol Teleport
-local teleportBtn = Instance.new("TextButton", Frame)
-teleportBtn.Size = UDim2.new(0.34,0,1,0)
-teleportBtn.Position = UDim2.new(0.66,0,0,0)
-teleportBtn.Text = "Teleport"
-teleportBtn.BackgroundColor3 = Color3.fromRGB(200,200,255)
+local TeleBtn = Instance.new("TextButton", MainFrame)
+TeleBtn.Size = UDim2.new(0.9,0,0,40)
+TeleBtn.Position = UDim2.new(0.05,0,0.3,0)
+TeleBtn.Text = "TELEPORT"
+TeleBtn.Font = Enum.Font.GothamBold
+TeleBtn.TextSize = 18
+TeleBtn.BackgroundColor3 = Color3.fromRGB(90,90,180)
+TeleBtn.TextColor3 = Color3.new(1,1,1)
+local teleCorner = Instance.new("UICorner", TeleBtn)
+teleCorner.CornerRadius = UDim.new(0,10)
 
--- // ScrollingFrame list checkpoint
+-- Label Koordinasi (di bawah GUI)
+local CoordBtn = Instance.new("TextLabel", MainFrame)
+CoordBtn.Size = UDim2.new(0.9,0,0,35)
+CoordBtn.Position = UDim2.new(0.05,0,0.85,0)
+CoordBtn.Text = "KORDINASI"
+CoordBtn.Font = Enum.Font.GothamBold
+CoordBtn.TextSize = 16
+CoordBtn.BackgroundColor3 = Color3.fromRGB(255,255,255)
+CoordBtn.TextColor3 = Color3.fromRGB(0,0,0)
+local coordCorner = Instance.new("UICorner", CoordBtn)
+coordCorner.CornerRadius = UDim.new(1,0)
+
+-- Checkpoint List Frame
 local listFrame = Instance.new("ScrollingFrame", ScreenGui)
 listFrame.Size = UDim2.new(0,200,0,200)
-listFrame.Position = UDim2.new(0.5,-100,0,180)
+listFrame.Position = UDim2.new(0.5,-100,0.55,0)
 listFrame.BackgroundColor3 = Color3.fromRGB(240,240,255)
 listFrame.Visible = false
 listFrame.Active = true
@@ -139,94 +102,99 @@ uiList.Changed:Connect(function()
 	listFrame.CanvasSize = UDim2.new(0,0,0,uiList.AbsoluteContentSize.Y)
 end)
 
--- Tombol Close di listFrame
 local closeBtn = Instance.new("TextButton", listFrame)
 closeBtn.Size = UDim2.new(1,0,0,25)
 closeBtn.Text = "X Tutup"
 closeBtn.BackgroundColor3 = Color3.fromRGB(255,180,180)
-
 closeBtn.MouseButton1Click:Connect(function()
 	listFrame.Visible = false
 end)
 
--- // Ambil semua checkpoint
-local function getCheckpoints()
-	local checkpoints = {}
-	for _, obj in pairs(workspace:GetDescendants()) do
-		if obj:IsA("SpawnLocation") or obj.Name:lower():match("checkpoint") then
-			table.insert(checkpoints, obj)
-		end
-	end
-	return checkpoints
-end
+-- Bardenss Text (Animasi Muncul)
+local Bardenss = Instance.new("TextLabel", ScreenGui)
+Bardenss.Size = UDim2.new(1,0,0,50)
+Bardenss.Position = UDim2.new(0,0,0.05,0)
+Bardenss.Text = "Bardenss"
+Bardenss.Font = Enum.Font.GothamBold
+Bardenss.TextSize = 32
+Bardenss.TextColor3 = Color3.new(1,1,1)
+Bardenss.BackgroundTransparency = 1
+Bardenss.TextStrokeTransparency = 0.5
+Bardenss.TextTransparency = 1
 
--- // Refresh tombol checkpoint
-local function refreshCheckpointList()
-	-- hapus tombol lama (selain tombol close)
-	for _, child in pairs(listFrame:GetChildren()) do
-		if child:IsA("TextButton") and child ~= closeBtn then
-			child:Destroy()
-		end
-	end
+local tweenIn = TweenService:Create(Bardenss, TweenInfo.new(1, Enum.EasingStyle.Quad), {TextTransparency = 0})
+local tweenOut = TweenService:Create(Bardenss, TweenInfo.new(1, Enum.EasingStyle.Quad), {TextTransparency = 1})
 
-	local checkpoints = getCheckpoints()
-	for i, cp in ipairs(checkpoints) do
-		local btn = Instance.new("TextButton", listFrame)
-		btn.Size = UDim2.new(1,0,0,25)
-		btn.Text = i..". "..cp.Name
-		btn.BackgroundColor3 = Color3.fromRGB(220,220,240)
-
-		btn.MouseButton1Click:Connect(function()
-			local char = LocalPlayer.Character
-			local root = char and char:FindFirstChild("HumanoidRootPart")
-			if root and cp then
-				root.CFrame = cp.CFrame + Vector3.new(0,5,0) -- naik 5 stud biar ga nyangkut
-			end
-		end)
-	end
-end
-
-local coordLabel = Instance.new("TextLabel", ScreenGui)
-coordLabel.Size = UDim2.new(0,200,0,25)
-coordLabel.Position = UDim2.new(0.5,-100,0,180+210) -- di bawah list / frame
-coordLabel.BackgroundColor3 = Color3.fromRGB(230,230,230)
-coordLabel.TextColor3 = Color3.fromRGB(0,0,0)
-coordLabel.TextScaled = true
-coordLabel.Text = "Koordinat: (0,0,0)"
-
--- Update realtime
-RunService.RenderStepped:Connect(function()
-	local char = LocalPlayer.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if root then
-		local pos = root.Position
-		coordLabel.Text = string.format("Koordinat: (%.1f, %.1f, %.1f)", pos.X, pos.Y, pos.Z)
-	end
-end)
-
--- // Connections
-flyBtn.MouseButton1Click:Connect(mobileFly)
-unflyBtn.MouseButton1Click:Connect(stopFly)
-
-teleportBtn.MouseButton1Click:Connect(function()
-	if listFrame.Visible then
-		listFrame.Visible = false
-	else
-		refreshCheckpointList()
-		listFrame.Visible = true
-	end
-end)
-
--- // Animasi tulisan Bardenss (2 detik)
-local animLabel = Instance.new("TextLabel", ScreenGui)
-animLabel.Size = UDim2.new(0,300,0,50)
-animLabel.Position = UDim2.new(0.5,-150,0.5,-25)
-animLabel.BackgroundTransparency = 1
-animLabel.Text = "Ｂａｒｄｅｎｓｓ"
-animLabel.TextColor3 = Color3.fromRGB(255,150,255)
-animLabel.Font = Enum.Font.Fantasy
-animLabel.TextScaled = true
-
-TweenService:Create(animLabel, TweenInfo.new(2), {TextTransparency = 1}):Play()
+tweenIn:Play()
+tweenIn.Completed:Wait()
 task.wait(2)
-animLabel:Destroy()
+tweenOut:Play()
+tweenOut.Completed:Wait()
+Bardenss:Destroy()
+
+-- // FLY SYSTEM
+local flying = false
+local bodyVelocity, bodyGyro
+
+local function mobileFly()
+    if flying then return end
+    flying = true
+    local hrp = HumanoidRootPart
+    bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Velocity = Vector3.zero
+    bodyVelocity.MaxForce = Vector3.new(4000,4000,4000)
+    bodyVelocity.Parent = hrp
+
+    bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.MaxTorque = Vector3.new(400000,400000,400000)
+    bodyGyro.CFrame = hrp.CFrame
+    bodyGyro.Parent = hrp
+
+    RunService.RenderStepped:Connect(function()
+        if flying and hrp then
+            local camCF = workspace.CurrentCamera.CFrame
+            local moveDirection = Vector3.zero
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection += camCF.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection -= camCF.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection -= camCF.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection += camCF.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDirection += Vector3.new(0,1,0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDirection -= Vector3.new(0,1,0) end
+            bodyVelocity.Velocity = moveDirection * 100
+            bodyGyro.CFrame = camCF
+        end
+    end)
+end
+
+local function stopFly()
+    flying = false
+    if bodyVelocity then bodyVelocity:Destroy() bodyVelocity = nil end
+    if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+end
+
+-- // Update Koordinasi
+RunService.RenderStepped:Connect(function()
+    if HumanoidRootPart and CoordBtn then
+        local pos = HumanoidRootPart.Position
+        CoordBtn.Text = string.format("X: %.1f | Y: %.1f | Z: %.1f", pos.X, pos.Y, pos.Z)
+    end
+end)
+
+-- // Button Functions
+FlyBtn.MouseButton1Click:Connect(function()
+    if flying then
+        stopFly()
+        FlyBtn.Text = "TERBANG"
+    else
+        mobileFly()
+        FlyBtn.Text = "STOP"
+    end
+end)
+
+TeleBtn.MouseButton1Click:Connect(function()
+    listFrame.Visible = not listFrame.Visible
+end)
+
+MinBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
