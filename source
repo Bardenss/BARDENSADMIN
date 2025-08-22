@@ -1,12 +1,13 @@
 -- ==========================
--- Bardenss Fly GUI Hybrid (PC + Mobile)
+-- Bardenss Fly GUI Mobile (Android)
 -- ==========================
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
-local isMobile = (player.PlayerGui.TouchGui ~= nil) or (UIS.TouchEnabled)
+-- Mobile detected
+local isMobile = true
 
 -- ==========================
 -- GUI Setup
@@ -87,11 +88,10 @@ iconB.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================
--- Fly System
+-- Fly System (Mobile)
 -- ==========================
 local flying = false
-local flySpeed = 60
-local ascend, descend = false, false
+local flySpeed = 50
 local connection = nil
 
 local function startFly()
@@ -103,74 +103,26 @@ local function startFly()
     if not hum then return end
 
     flying = true
+    hum.PlatformStand = true
 
-    if isMobile then
-        -- Mobile fly (BodyVelocity)
-        hum.PlatformStand = true
-        local bv = Instance.new("BodyVelocity")
-        bv.Name = "FlyVelocity"
-        bv.MaxForce = Vector3.new(1e5,1e5,1e5)
-        bv.Velocity = Vector3.new(0,0,0)
-        bv.Parent = hrp
+    local bv = Instance.new("BodyVelocity")
+    bv.Name = "FlyVelocity"
+    bv.MaxForce = Vector3.new(1e5,1e5,1e5)
+    bv.Velocity = Vector3.new(0,0,0)
+    bv.Parent = hrp
 
-        connection = RunService.RenderStepped:Connect(function()
-            local moveDir = Vector3.new()
-            if hum.MoveDirection.Magnitude > 0 then moveDir = hum.MoveDirection.Unit end
-            bv.Velocity = Vector3.new(moveDir.X,1,moveDir.Z)*50
-        end)
-    else
-        -- PC fly (VectorForce + AlignOrientation)
-        hum:ChangeState(Enum.HumanoidStateType.Physics)
-        local att = Instance.new("Attachment", hrp)
-        local vf = Instance.new("VectorForce")
-        vf.Attachment0 = att
-        vf.RelativeTo = Enum.ActuatorRelativeTo.World
-        vf.Force = Vector3.zero
-        vf.Parent = hrp
-        local ao = Instance.new("AlignOrientation")
-        ao.Attachment0 = att
-        ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
-        ao.Responsiveness = 200
-        ao.Parent = hrp
-
-        local keyDown, keyUp
-        keyDown = UIS.InputBegan:Connect(function(input, gp)
-            if gp then return end
-            if input.KeyCode == Enum.KeyCode.E then ascend = true end
-            if input.KeyCode == Enum.KeyCode.Q then descend = true end
-        end)
-        keyUp = UIS.InputEnded:Connect(function(input, gp)
-            if gp then return end
-            if input.KeyCode == Enum.KeyCode.E then ascend = false end
-            if input.KeyCode == Enum.KeyCode.Q then descend = false end
-        end)
-
-        connection = RunService.Heartbeat:Connect(function()
-            if not flying then
-                connection:Disconnect()
-                keyDown:Disconnect()
-                keyUp:Disconnect()
-                vf:Destroy()
-                ao:Destroy()
-                att:Destroy()
-                hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-                return
-            end
-
-            local cam = workspace.CurrentCamera
-            local dir = Vector3.zero
-            if UIS:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
-            if ascend then dir += Vector3.new(0,1,0) end
-            if descend then dir -= Vector3.new(0,1,0) end
-
-            if dir.Magnitude > 0 then dir = dir.Unit * flySpeed end
-            vf.Force = (dir - hrp.AssemblyLinearVelocity) * hrp.AssemblyMass * 5
-            ao.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + cam.CFrame.LookVector)
-        end)
-    end
+    connection = RunService.RenderStepped:Connect(function()
+        local moveDir = Vector3.new()
+        if hum.MoveDirection.Magnitude > 0 then
+            -- Ambil arah kamera
+            local camCF = workspace.CurrentCamera.CFrame
+            local camLook = Vector3.new(camCF.LookVector.X,0,camCF.LookVector.Z).Unit
+            local camRight = camCF.RightVector
+            moveDir = (camLook * hum.MoveDirection.Z + camRight * hum.MoveDirection.X)
+        end
+        -- Terbang bebas mengikuti joystick + arah kamera
+        bv.Velocity = moveDir * flySpeed
+    end)
 end
 
 local function stopFly()
