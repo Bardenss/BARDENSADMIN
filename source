@@ -1,26 +1,14 @@
---// Bardenss Cute Fly GUI (Android + PC) \\--
+--// Bardenss Cute Fly (Joystick ikut Kamera) \\--
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
-local camera = workspace.CurrentCamera
+local Camera = workspace.CurrentCamera
 
 local flyConnection, flyGyro, flyVelocity
 local FLYING = false
 local flySpeed = 50
-
--- =============== NO FALL DAMAGE ===============
-local function noFallDamage()
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChildOfClass("Humanoid") then
-        char:FindFirstChildOfClass("Humanoid").StateChanged:Connect(function(_, new)
-            if new == Enum.HumanoidStateType.Freefall or new == Enum.HumanoidStateType.FallingDown then
-                char:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Physics)
-            end
-        end)
-    end
-end
 
 -- =============== STOP FLY ===============
 local function stopFly()
@@ -28,7 +16,6 @@ local function stopFly()
     if flyConnection then flyConnection:Disconnect() flyConnection = nil end
     if flyGyro then flyGyro:Destroy() flyGyro = nil end
     if flyVelocity then flyVelocity:Destroy() flyVelocity = nil end
-
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if hum then hum.PlatformStand = false end
 end
@@ -44,10 +31,8 @@ local function startFly()
     local hum = char:FindFirstChildOfClass("Humanoid")
 
     hum.PlatformStand = true
-    noFallDamage()
 
     flyVelocity = Instance.new("BodyVelocity")
-    flyVelocity.Velocity = Vector3.zero
     flyVelocity.MaxForce = Vector3.new(1e9, 1e9, 1e9)
     flyVelocity.Parent = hrp
 
@@ -59,16 +44,19 @@ local function startFly()
 
     flyConnection = RunService.RenderStepped:Connect(function()
         if not FLYING then return end
-        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+        if not char or not hrp or not hum then return end
 
+        local camCF = Camera.CFrame
         local moveDir = hum.MoveDirection
-        local cam = workspace.CurrentCamera
 
-        -- Arah kamera, tapi proyeksi biar ga aur2an
-        local camCF = CFrame.new(Vector3.new(), cam.CFrame.LookVector)
-        local relativeDir = camCF:VectorToWorldSpace(Vector3.new(moveDir.X, 0, moveDir.Z))
+        -- buat basis arah kamera (forward & right di bidang XZ)
+        local forward = Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z).Unit
+        local right = Vector3.new(camCF.RightVector.X, 0, camCF.RightVector.Z).Unit
 
-        -- Naik & turun (space & shift untuk PC, tombol lompat/joystick Y untuk mobile)
+        -- proyeksi joystick ke arah kamera
+        local relativeMove = (forward * moveDir.Z + right * moveDir.X)
+
+        -- naik/turun
         local yVel = 0
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
             yVel = flySpeed
@@ -76,8 +64,8 @@ local function startFly()
             yVel = -flySpeed
         end
 
-        flyVelocity.Velocity = Vector3.new(relativeDir.X, 0, relativeDir.Z) * flySpeed + Vector3.new(0, yVel, 0)
-        flyGyro.CFrame = cam.CFrame
+        flyVelocity.Velocity = relativeMove * flySpeed + Vector3.new(0, yVel, 0)
+        flyGyro.CFrame = camCF
     end)
 end
 
@@ -86,30 +74,12 @@ local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ResetOnSpawn = false
 
--- Teks Bardenss Cute animasi
-local BardenssLabel = Instance.new("TextLabel", ScreenGui)
-BardenssLabel.Size = UDim2.new(1,0,0.2,0)
-BardenssLabel.Position = UDim2.new(0,0,0.3,0)
-BardenssLabel.Text = "Bardenss"
-BardenssLabel.TextScaled = true
-BardenssLabel.Font = Enum.Font.Cartoon
-BardenssLabel.TextColor3 = Color3.fromRGB(255,182,193)
-BardenssLabel.BackgroundTransparency = 1
-
-task.delay(2, function()
-    BardenssLabel:Destroy()
-end)
-
--- Bar utama
 local MainFrame = Instance.new("Frame", ScreenGui)
 MainFrame.Size = UDim2.new(0,200,0,50)
 MainFrame.Position = UDim2.new(0,20,0,200)
 MainFrame.BackgroundColor3 = Color3.fromRGB(255,200,220)
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0,10)
 
-local UICorner = Instance.new("UICorner", MainFrame)
-UICorner.CornerRadius = UDim.new(0,10)
-
--- Tombol minimize
 local MinBtn = Instance.new("TextButton", MainFrame)
 MinBtn.Size = UDim2.new(0,30,0,30)
 MinBtn.Position = UDim2.new(1,-35,0,10)
@@ -133,7 +103,6 @@ LogoBtn.MouseButton1Click:Connect(function()
     LogoBtn.Visible = false
 end)
 
--- Tombol Fly
 local FlyBtn = Instance.new("TextButton", MainFrame)
 FlyBtn.Size = UDim2.new(0,150,0,30)
 FlyBtn.Position = UDim2.new(0,10,0,10)
