@@ -1,13 +1,9 @@
--- Script lengkap Custom Fly + Speed + CMDS BAR GUI untuk Roblox
--- Disiapkan oleh ChatGPT
--- Logika fly tetap aman
-
--- // Services
+-- Services
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
--- // Fly Vars
+-- Fly Vars
 local velocityHandlerName = "FlyVelocity_"..math.random(1000,9999)
 local gyroHandlerName = "FlyGyro_"..math.random(1000,9999)
 local flying = false
@@ -18,12 +14,12 @@ local flyToggled = false
 local speedToggled = false
 local userWalkSpeed = 16
 
--- // Helpers
+-- Helpers
 local function getRoot(char)
     return char and char:FindFirstChild("HumanoidRootPart")
 end
 
--- // Fly Functions
+-- Fly Functions
 local function startFly()
     if flying then return end
     local char = LocalPlayer.Character
@@ -89,14 +85,13 @@ local function stopFly()
     end
 end
 
--- // GUI Creation
+-- GUI
 local function createGui()
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "CustomMenu"
     ScreenGui.ResetOnSpawn = false
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
-    -- Main Frame
     local MainFrame = Instance.new("Frame", ScreenGui)
     MainFrame.Size = UDim2.new(0,250,0,350)
     MainFrame.Position = UDim2.new(0.5,-125,0.3,0)
@@ -106,7 +101,6 @@ local function createGui()
     local corner = Instance.new("UICorner", MainFrame)
     corner.CornerRadius = UDim.new(0,15)
 
-    -- Title Bar
     local TitleBar = Instance.new("Frame", MainFrame)
     TitleBar.Size = UDim2.new(1,0,0,40)
     TitleBar.BackgroundTransparency = 1
@@ -121,7 +115,6 @@ local function createGui()
     VersionLabel.BackgroundTransparency = 1
     VersionLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- Minimize Button 🏠
     local MinBtn = Instance.new("TextButton", TitleBar)
     MinBtn.Size = UDim2.new(0,40,0,25)
     MinBtn.Position = UDim2.new(1,-45,0.5,-12)
@@ -133,7 +126,6 @@ local function createGui()
     local minCorner = Instance.new("UICorner", MinBtn)
     minCorner.CornerRadius = UDim.new(0,6)
 
-    -- Back Button 👈
     local BackBtn = Instance.new("TextButton", TitleBar)
     BackBtn.Size = UDim2.new(0,40,0,25)
     BackBtn.Position = UDim2.new(1,-90,0.5,-12)
@@ -146,7 +138,6 @@ local function createGui()
     backCorner.CornerRadius = UDim.new(0,6)
     BackBtn.Visible = false
 
-    -- GUI restore button 🏠
     local OpenLogo = Instance.new("TextButton", ScreenGui)
     OpenLogo.Size = UDim2.new(0,50,0,50)
     OpenLogo.Position = UDim2.new(0,20,0.5,-25)
@@ -166,7 +157,6 @@ local function createGui()
         OpenLogo.Visible = false
     end)
 
-    -- Menu Frames
     local MenuFrame = Instance.new("Frame", MainFrame)
     MenuFrame.Size = UDim2.new(1,0,1,0)
     MenuFrame.BackgroundTransparency = 1
@@ -181,7 +171,6 @@ local function createGui()
     SpeedFrame.BackgroundTransparency = 1
     SpeedFrame.Visible = false
 
-    -- Helper untuk buat button
     local function makeButton(parent,text,yPos)
         local btn = Instance.new("TextButton", parent)
         btn.Size = UDim2.new(0.85,0,0,50)
@@ -200,7 +189,10 @@ local function createGui()
     local SpeedBtn = makeButton(MenuFrame,"SPEED",140)
     local CmdsBtn = makeButton(MenuFrame,"CMDS BAR",220)
 
-        -- Fly Toggle + Input
+    -- === FlyFrame Buttons ===
+    local FlyToggleBtn = Instance.new("TextButton", FlyFrame)
+    FlyToggleBtn.Size = UDim2.new(0.85,0,0,50)
+    FlyToggleBtn.Position = UDim2.new(0.5,-100,0,60)
     FlyToggleBtn.Text = "ON / OFF FLY"
     FlyToggleBtn.Font = Enum.Font.GothamBold
     FlyToggleBtn.TextScaled = true
@@ -254,7 +246,7 @@ local function createGui()
         end
     end)
 
-    -- Speed Toggle + Input
+    -- === SpeedFrame Buttons ===
     local SpeedToggleBtn = Instance.new("TextButton", SpeedFrame)
     SpeedToggleBtn.Size = UDim2.new(0.85,0,0,50)
     SpeedToggleBtn.Position = UDim2.new(0.5,-100,0,60)
