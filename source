@@ -1,16 +1,21 @@
 -- Script lengkap Custom Fly + Speed + CMDS BAR GUI untuk Roblox
 -- Disiapkan oleh ChatGPT
--- Jangan ubah logika fly
+-- Logika fly tetap aman
 
 -- // Services
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
 -- // Fly Vars
 local velocityHandlerName = "FlyVelocity_"..math.random(1000,9999)
 local gyroHandlerName = "FlyGyro_"..math.random(1000,9999)
 local flying = false
 local flySpeed = 100
+local flyToggled = false
+
+-- WalkSpeed Vars
+local speedToggled = false
 local userWalkSpeed = 16
 
 -- // Helpers
@@ -49,7 +54,7 @@ local function startFly()
     bg.Parent = root
 
     local controlModule = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule"))
-    game:GetService("RunService").RenderStepped:Connect(function()
+    RunService.RenderStepped:Connect(function()
         if not flying or not root or not bv or not bg then return end
         local moveDir = controlModule:GetMoveVector()
         bg.CFrame = camera.CFrame
@@ -86,16 +91,18 @@ end
 
 -- // GUI Creation
 local function createGui()
-    local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+    local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "CustomMenu"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
+    -- Main Frame
     local MainFrame = Instance.new("Frame", ScreenGui)
     MainFrame.Size = UDim2.new(0,250,0,350)
     MainFrame.Position = UDim2.new(0.5,-125,0.3,0)
     MainFrame.BackgroundColor3 = Color3.fromRGB(240,240,240)
     MainFrame.Active = true
     MainFrame.Draggable = true
-
     local corner = Instance.new("UICorner", MainFrame)
     corner.CornerRadius = UDim.new(0,15)
 
@@ -174,7 +181,7 @@ local function createGui()
     SpeedFrame.BackgroundTransparency = 1
     SpeedFrame.Visible = false
 
-    -- Menu Buttons Helper
+    -- Helper untuk buat button
     local function makeButton(parent,text,yPos)
         local btn = Instance.new("TextButton", parent)
         btn.Size = UDim2.new(0.85,0,0,50)
@@ -193,125 +200,114 @@ local function createGui()
     local SpeedBtn = makeButton(MenuFrame,"SPEED",140)
     local CmdsBtn = makeButton(MenuFrame,"CMDS BAR",220)
 
-    -- Fly ON/OFF toggle
-    local FlyOnBtn = Instance.new("TextButton", FlyFrame)
-    FlyOnBtn.Size = UDim2.new(0.85,0,0,50)
-    FlyOnBtn.Position = UDim2.new(0.5,-100,0,60)
-    FlyOnBtn.Text = "ON / OFF FLY"
-    FlyOnBtn.Font = Enum.Font.GothamBold
-    FlyOnBtn.TextScaled = true
-    FlyOnBtn.TextColor3 = Color3.fromRGB(255,255,255)
-    FlyOnBtn.BackgroundColor3 = Color3.fromRGB(50,50,150)
-    local flyCorner = Instance.new("UICorner", FlyOnBtn)
+        -- Fly Toggle + Input
+    FlyToggleBtn.Text = "ON / OFF FLY"
+    FlyToggleBtn.Font = Enum.Font.GothamBold
+    FlyToggleBtn.TextScaled = true
+    FlyToggleBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(50,50,150)
+    local flyCorner = Instance.new("UICorner", FlyToggleBtn)
     flyCorner.CornerRadius = UDim.new(0,12)
 
-    -- Speed input
-    local SpeedInput = Instance.new("TextBox", SpeedFrame)
-    SpeedInput.Size = UDim2.new(0.85,0,0,50)
-    SpeedInput.Position = UDim2.new(0.5,-100,0,60)
-    SpeedInput.PlaceholderText = "Masukkan WalkSpeed"
-    SpeedInput.Text = tostring(userWalkSpeed)
-    SpeedInput.TextScaled = true
-    SpeedInput.ClearTextOnFocus = false
-    SpeedInput.BackgroundColor3 = Color3.fromRGB(220,220,220)
-    SpeedInput.TextColor3 = Color3.fromRGB(0,0,0)
-    local speedCorner = Instance.new("UICorner", SpeedInput)
-    speedCorner.CornerRadius = UDim.new(0,12)
+    local FlySpeedInput = Instance.new("TextBox", FlyFrame)
+    FlySpeedInput.Size = UDim2.new(0.85,0,0,50)
+    FlySpeedInput.Position = UDim2.new(0.5,-100,0,130)
+    FlySpeedInput.PlaceholderText = "Masukkan Fly Speed"
+    FlySpeedInput.Text = tostring(flySpeed)
+    FlySpeedInput.TextScaled = true
+    FlySpeedInput.ClearTextOnFocus = false
+    FlySpeedInput.BackgroundColor3 = Color3.fromRGB(220,220,220)
+    FlySpeedInput.TextColor3 = Color3.fromRGB(0,0,0)
+    local flySpeedCorner = Instance.new("UICorner", FlySpeedInput)
+    flySpeedCorner.CornerRadius = UDim.new(0,12)
 
-    local SpeedApplyBtn = Instance.new("TextButton", SpeedFrame)
-    SpeedApplyBtn.Size = UDim2.new(0.85,0,0,50)
-    SpeedApplyBtn.Position = UDim2.new(0.5,-100,0,140)
-    SpeedApplyBtn.Text = "APPLY WALK SPEED"
-    SpeedApplyBtn.Font = Enum.Font.GothamBold
-    SpeedApplyBtn.TextScaled = true
-    SpeedApplyBtn.TextColor3 = Color3.fromRGB(255,255,255)
-    SpeedApplyBtn.BackgroundColor3 = Color3.fromRGB(50,50,150)
-    local applyCorner = Instance.new("UICorner", SpeedApplyBtn)
-    applyCorner.CornerRadius = UDim.new(0,12)
+    local FlyApplyBtn = Instance.new("TextButton", FlyFrame)
+    FlyApplyBtn.Size = UDim2.new(0.85,0,0,50)
+    FlyApplyBtn.Position = UDim2.new(0.5,-100,0,200)
+    FlyApplyBtn.Text = "APPLY FLY SPEED"
+    FlyApplyBtn.Font = Enum.Font.GothamBold
+    FlyApplyBtn.TextScaled = true
+    FlyApplyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    FlyApplyBtn.BackgroundColor3 = Color3.fromRGB(50,50,150)
+    local flyApplyCorner = Instance.new("UICorner", FlyApplyBtn)
+    flyApplyCorner.CornerRadius = UDim.new(0,12)
 
-    -- Apply WalkSpeed
-    SpeedApplyBtn.MouseButton1Click:Connect(function()
-        local speed = tonumber(SpeedInput.Text)
-        if speed and speed > 0 then
-            userWalkSpeed = speed
-            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if hum and not flying then
-                hum.WalkSpeed = userWalkSpeed
-            end
+    FlyApplyBtn.MouseButton1Click:Connect(function()
+        local value = tonumber(FlySpeedInput.Text)
+        if value and value > 0 then
+            flySpeed = value
         end
     end)
 
-    -- Fly toggle
-    local flyToggled = false
-    FlyOnBtn.MouseButton1Click:Connect(function()
+    FlyToggleBtn.MouseButton1Click:Connect(function()
         local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if flyToggled then
             stopFly()
             flyToggled = false
-            FlyOnBtn.Text = "ON / OFF FLY"
+            FlyToggleBtn.Text = "ON / OFF FLY"
             if hum then hum.WalkSpeed = userWalkSpeed end
         else
             startFly()
             flyToggled = true
-            FlyOnBtn.Text = "ON / OFF FLY (ON)"
-            if hum then hum.WalkSpeed = 0 end -- kaki diam saat fly
+            FlyToggleBtn.Text = "ON / OFF FLY (ON)"
+            if hum then hum.WalkSpeed = 0 end
         end
     end)
 
-    -- CMDS BAR GUI
-    local CmdsGui = Instance.new("Frame", ScreenGui)
-    CmdsGui.Size = UDim2.new(0,400,0,50)
-    CmdsGui.Position = UDim2.new(0.5,-200,0.8,0)
-    CmdsGui.BackgroundColor3 = Color3.fromRGB(220,220,220)
-    local cmdsCorner = Instance.new("UICorner", CmdsGui)
-    cmdsCorner.CornerRadius = UDim.new(0,8)
-    CmdsGui.Visible = false
+    -- Speed Toggle + Input
+    local SpeedToggleBtn = Instance.new("TextButton", SpeedFrame)
+    SpeedToggleBtn.Size = UDim2.new(0.85,0,0,50)
+    SpeedToggleBtn.Position = UDim2.new(0.5,-100,0,60)
+    SpeedToggleBtn.Text = "ON / OFF SPEED"
+    SpeedToggleBtn.Font = Enum.Font.GothamBold
+    SpeedToggleBtn.TextScaled = true
+    SpeedToggleBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    SpeedToggleBtn.BackgroundColor3 = Color3.fromRGB(50,50,150)
+    local speedToggleCorner = Instance.new("UICorner", SpeedToggleBtn)
+    speedToggleCorner.CornerRadius = UDim.new(0,12)
 
-    local CmdsInput = Instance.new("TextBox", CmdsGui)
-    CmdsInput.Size = UDim2.new(0.85,0,1,0)
-    CmdsInput.Position = UDim2.new(0,0,0,0)
-    CmdsInput.PlaceholderText = ";fly 25"
-    CmdsInput.ClearTextOnFocus = false
-    CmdsInput.Text = ""
-    CmdsInput.TextScaled = true
-    CmdsInput.BackgroundTransparency = 1
-    CmdsInput.TextColor3 = Color3.fromRGB(0,0,0)
+    local WalkSpeedInput = Instance.new("TextBox", SpeedFrame)
+    WalkSpeedInput.Size = UDim2.new(0.85,0,0,50)
+    WalkSpeedInput.Position = UDim2.new(0.5,-100,0,130)
+    WalkSpeedInput.PlaceholderText = "Masukkan WalkSpeed"
+    WalkSpeedInput.Text = tostring(userWalkSpeed)
+    WalkSpeedInput.TextScaled = true
+    WalkSpeedInput.ClearTextOnFocus = false
+    WalkSpeedInput.BackgroundColor3 = Color3.fromRGB(220,220,220)
+    WalkSpeedInput.TextColor3 = Color3.fromRGB(0,0,0)
+    local walkCorner = Instance.new("UICorner", WalkSpeedInput)
+    walkCorner.CornerRadius = UDim.new(0,12)
 
-    local CmdsClose = Instance.new("TextButton", CmdsGui)
-    CmdsClose.Size = UDim2.new(0,40,1,0)
-    CmdsClose.Position = UDim2.new(0.85,0,0,0)
-    CmdsClose.Text = "❌"
-    CmdsClose.TextScaled = true
-    CmdsClose.BackgroundColor3 = Color3.fromRGB(200,50,50)
-    local closeCorner = Instance.new("UICorner", CmdsClose)
-    closeCorner.CornerRadius = UDim.new(0,6)
+    local WalkApplyBtn = Instance.new("TextButton", SpeedFrame)
+    WalkApplyBtn.Size = UDim2.new(0.85,0,0,50)
+    WalkApplyBtn.Position = UDim2.new(0.5,-100,0,200)
+    WalkApplyBtn.Text = "APPLY WALK SPEED"
+    WalkApplyBtn.Font = Enum.Font.GothamBold
+    WalkApplyBtn.TextScaled = true
+    WalkApplyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    WalkApplyBtn.BackgroundColor3 = Color3.fromRGB(50,50,150)
+    local walkApplyCorner = Instance.new("UICorner", WalkApplyBtn)
+    walkApplyCorner.CornerRadius = UDim.new(0,12)
 
-    CmdsBtn.MouseButton1Click:Connect(function()
-        CmdsGui.Visible = true
-        CmdsInput:CaptureFocus()
+    WalkApplyBtn.MouseButton1Click:Connect(function()
+        local value = tonumber(WalkSpeedInput.Text)
+        if value and value > 0 then
+            userWalkSpeed = value
+            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum and not flyToggled then hum.WalkSpeed = userWalkSpeed end
+        end
     end)
-    CmdsClose.MouseButton1Click:Connect(function()
-        CmdsGui.Visible = false
-    end)
 
-    -- Eksekusi command CMDS BAR
-    CmdsInput.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            local cmd = CmdsInput.Text:lower()
-            if cmd:match(";fly (%d+)") then
-                local speedValue = tonumber(cmd:match(";fly (%d+)"))
-                if speedValue then
-                    flySpeed = speedValue
-                end
-            elseif cmd:match(";speed (%d+)") then
-                local speedValue = tonumber(cmd:match(";speed (%d+)"))
-                if speedValue then
-                    userWalkSpeed = speedValue
-                    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                    if hum and not flying then hum.WalkSpeed = userWalkSpeed end
-                end
-            end
-            CmdsInput.Text = ""
+    SpeedToggleBtn.MouseButton1Click:Connect(function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if speedToggled then
+            speedToggled = false
+            SpeedToggleBtn.Text = "ON / OFF SPEED"
+            if hum and not flyToggled then hum.WalkSpeed = userWalkSpeed end
+        else
+            speedToggled = true
+            SpeedToggleBtn.Text = "ON / OFF SPEED (ON)"
+            if hum and not flyToggled then hum.WalkSpeed = userWalkSpeed end
         end
     end)
 
@@ -319,17 +315,23 @@ local function createGui()
     FlyBtn.MouseButton1Click:Connect(function()
         MenuFrame.Visible = false
         FlyFrame.Visible = true
-        SpeedFrame.Visible = false
+        BackBtn.Visible = true
     end)
     SpeedBtn.MouseButton1Click:Connect(function()
         MenuFrame.Visible = false
-        FlyFrame.Visible = false
         SpeedFrame.Visible = true
+        BackBtn.Visible = true
     end)
+    CmdsBtn.MouseButton1Click:Connect(function()
+        MenuFrame.Visible = false
+        BackBtn.Visible = true
+    end)
+
     BackBtn.MouseButton1Click:Connect(function()
-        MenuFrame.Visible = true
         FlyFrame.Visible = false
         SpeedFrame.Visible = false
+        MenuFrame.Visible = true
+        BackBtn.Visible = false
     end)
 end
 
