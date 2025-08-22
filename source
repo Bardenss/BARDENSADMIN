@@ -14,7 +14,7 @@ local function getRoot(char)
 	return char and char:FindFirstChild("HumanoidRootPart")
 end
 
--- // Start Fly
+-- // Start Fly (logika tetap sama)
 local function startFly()
 	if flying then return end
 	local char = LocalPlayer.Character
@@ -127,11 +127,15 @@ local function createGui()
 	local minCorner = Instance.new("UICorner", MinBtn)
 	minCorner.CornerRadius = UDim.new(0,6)
 
-	-- Logo restore
-	local OpenLogo = Instance.new("ImageButton", ScreenGui)
+	-- GUI restore button (emoji 🏠)
+	local OpenLogo = Instance.new("TextButton", ScreenGui)
 	OpenLogo.Size = UDim2.new(0,50,0,50)
 	OpenLogo.Position = UDim2.new(0,20,0.5,-25)
-	OpenLogo.Image = "rbxassetid://93768214580798"
+	OpenLogo.Text = "🏠"
+	OpenLogo.TextScaled = true
+	OpenLogo.BackgroundColor3 = Color3.fromRGB(200,100,200)
+	local logoCorner = Instance.new("UICorner", OpenLogo)
+	logoCorner.CornerRadius = UDim.new(0,12)
 	OpenLogo.Visible = false
 
 	local function minimizeGUI()
@@ -155,10 +159,10 @@ local function createGui()
 	FlyFrame.BackgroundTransparency = 1
 	FlyFrame.Visible = false
 
-	local TeleFrame = Instance.new("Frame", MainFrame)
-	TeleFrame.Size = UDim2.new(1,0,1,0)
-	TeleFrame.BackgroundTransparency = 1
-	TeleFrame.Visible = false
+	local SpeedFrame = Instance.new("Frame", MainFrame)
+	SpeedFrame.Size = UDim2.new(1,0,1,0)
+	SpeedFrame.BackgroundTransparency = 1
+	SpeedFrame.Visible = false
 
 	-- Button helper
 	local function makeButton(parent,text,yPos)
@@ -177,56 +181,47 @@ local function createGui()
 
 	-- Menu utama buttons
 	local FlyBtn = makeButton(MenuFrame,"TERBANG",60)
-	local TeleBtn = makeButton(MenuFrame,"TELEPORT",140)
+	local SpeedBtn = makeButton(MenuFrame,"SPEED",140)
 
 	-- Fly Submenu
 	local FlyOnBtn = makeButton(FlyFrame,"ON / OFF FLY",60)
 	local FlyBackBtn = makeButton(FlyFrame,"BACK",220)
 
-	-- Slider Fly (draggable bulatan)
-	local SliderTrack = Instance.new("Frame", FlyFrame)
-	SliderTrack.Size = UDim2.new(0.8,0,0,6)
-	SliderTrack.Position = UDim2.new(0.1,0,0.5,0)
-	SliderTrack.AnchorPoint = Vector2.new(0,0.5)
-	SliderTrack.BackgroundColor3 = Color3.fromRGB(200,200,200)
-	local trackCorner = Instance.new("UICorner", SliderTrack)
-	trackCorner.CornerRadius = UDim.new(0,3)
+	-- Speed Submenu
+	local SpeedBackBtn = makeButton(SpeedFrame,"BACK",220)
 
-	local SliderHandle = Instance.new("Frame", SliderTrack)
-	SliderHandle.Size = UDim2.new(0,20,0,20)
-	SliderHandle.Position = UDim2.new(flySpeed/200,0,0.5,-10)
-	SliderHandle.BackgroundColor3 = Color3.fromRGB(100,50,250)
-	local handleCorner = Instance.new("UICorner", SliderHandle)
-	handleCorner.CornerRadius = UDim.new(1,0)
+	-- WalkSpeed input
+	local WalkSpeedLabel = Instance.new("TextLabel", SpeedFrame)
+	WalkSpeedLabel.Size = UDim2.new(0.8,0,0,30)
+	WalkSpeedLabel.Position = UDim2.new(0.1,0,0.4,0)
+	WalkSpeedLabel.Text = "WalkSpeed:"
+	WalkSpeedLabel.TextScaled = true
+	WalkSpeedLabel.BackgroundTransparency = 1
+	WalkSpeedLabel.TextColor3 = Color3.fromRGB(0,0,0)
 
-	local SliderValueLabel = Instance.new("TextLabel", FlyFrame)
-	SliderValueLabel.Position = UDim2.new(0.92,0,0.5,-10)
-	SliderValueLabel.Size = UDim2.new(0,50,0,20)
-	SliderValueLabel.Text = flySpeed
-	SliderValueLabel.TextColor3 = Color3.fromRGB(0,0,0)
-	SliderValueLabel.BackgroundTransparency = 1
-	SliderValueLabel.TextScaled = true
+	local WalkSpeedInput = Instance.new("TextBox", SpeedFrame)
+	WalkSpeedInput.Size = UDim2.new(0.5,0,0,30)
+	WalkSpeedInput.Position = UDim2.new(0.25,0,0.5,0)
+	WalkSpeedInput.Text = "16"
+	WalkSpeedInput.ClearTextOnFocus = false
+	WalkSpeedInput.TextScaled = true
+	WalkSpeedInput.TextColor3 = Color3.fromRGB(0,0,0)
+	WalkSpeedInput.BackgroundColor3 = Color3.fromRGB(200,200,200)
+	local wsCorner = Instance.new("UICorner", WalkSpeedInput)
+	wsCorner.CornerRadius = UDim.new(0,6)
 
-	local dragging = false
-	SliderHandle.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
-	end)
-	SliderHandle.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-	end)
-
-	RunService.RenderStepped:Connect(function()
-		if dragging then
-			local mouse = LocalPlayer:GetMouse()
-			local trackPos = SliderTrack.AbsolutePosition.X
-			local trackSize = SliderTrack.AbsoluteSize.X
-			local relative = math.clamp((mouse.X - trackPos)/trackSize,0,1)
-			SliderHandle.Position = UDim2.new(relative,0,0.5,-SliderHandle.Size.Y.Offset/2)
-			flySpeed = math.floor(relative*200)
-			SliderValueLabel.Text = flySpeed
+	-- Apply WalkSpeed on Enter
+	WalkSpeedInput.FocusLost:Connect(function(enterPressed)
+		if enterPressed then
+			local ws = tonumber(WalkSpeedInput.Text)
+			if ws then
+				local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+				if hum then hum.WalkSpeed = ws end
+			end
 		end
 	end)
 
+	-- Fly buttons
 	local flyToggled = false
 	FlyOnBtn.MouseButton1Click:Connect(function()
 		if flyToggled then
@@ -248,50 +243,14 @@ local function createGui()
 		FlyFrame.Visible = true
 	end)
 
-	-- Teleport submenu
-	local TeleBackBtn = makeButton(TeleFrame,"BACK",0)
-	TeleBackBtn.AnchorPoint = Vector2.new(0.5,0)
-	TeleBackBtn.Position = UDim2.new(0.5,0,1,-60) -- tetap di bawah, tidak tertimpa scroll
-
-	-- Scrollable teleport list
-	local TeleScroll = Instance.new("ScrollingFrame", TeleFrame)
-	TeleScroll.Size = UDim2.new(1,0,1,0)
-	TeleScroll.Position = UDim2.new(0,0,0,40)
-	TeleScroll.CanvasSize = UDim2.new(0,0,0,0)
-	TeleScroll.ScrollBarThickness = 8
-	TeleScroll.BackgroundTransparency = 1
-
-	local function getCheckpoints()
-		local checkpoints = {}
-		for _, obj in pairs(workspace:GetDescendants()) do
-			if obj:IsA("SpawnLocation") or obj.Name:lower():match("checkpoint") then
-				table.insert(checkpoints,obj)
-			end
-		end
-		return checkpoints
-	end
-
-	local function refreshCheckpoints()
-		TeleScroll:ClearAllChildren()
-		local cps = getCheckpoints()
-		for i,cp in ipairs(cps) do
-			local btn = makeButton(TeleScroll,"Teleport "..i,(i-1)*60)
-			btn.MouseButton1Click:Connect(function()
-				local root = getRoot(LocalPlayer.Character)
-				if root then root.CFrame = cp.CFrame + Vector3.new(0,5,0) end
-			end)
-		end
-		TeleScroll.CanvasSize = UDim2.new(0,0,0,#cps*60 + 60)
-	end
-
-	TeleBtn.MouseButton1Click:Connect(function()
-		MenuFrame.Visible = false
-		TeleFrame.Visible = true
-		refreshCheckpoints()
-	end)
-	TeleBackBtn.MouseButton1Click:Connect(function()
-		TeleFrame.Visible = false
+	-- Speed buttons
+	SpeedBackBtn.MouseButton1Click:Connect(function()
+		SpeedFrame.Visible = false
 		MenuFrame.Visible = true
+	end)
+	SpeedBtn.MouseButton1Click:Connect(function()
+		MenuFrame.Visible = false
+		SpeedFrame.Visible = true
 	end)
 
 	-- Persist GUI on respawn
