@@ -1,6 +1,9 @@
+-- Script lengkap Custom Fly + Speed + CMDS BAR GUI untuk Roblox
+-- Disiapkan oleh ChatGPT
+-- Jangan ubah logika fly
+
 -- // Services
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 -- // Fly Vars
@@ -8,256 +11,309 @@ local velocityHandlerName = "FlyVelocity_"..math.random(1000,9999)
 local gyroHandlerName = "FlyGyro_"..math.random(1000,9999)
 local flying = false
 local flySpeed = 100
+local userWalkSpeed = 16
 
 -- // Helpers
 local function getRoot(char)
-	return char and char:FindFirstChild("HumanoidRootPart")
+    return char and char:FindFirstChild("HumanoidRootPart")
 end
 
--- // Start Fly (logika tetap sama)
+-- // Fly Functions
 local function startFly()
-	if flying then return end
-	local char = LocalPlayer.Character
-	local root = getRoot(char)
-	if not root then return end
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hum then return end
+    if flying then return end
+    local char = LocalPlayer.Character
+    local root = getRoot(char)
+    if not root then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
 
-	flying = true
-	local camera = workspace.CurrentCamera
+    flying = true
+    local camera = workspace.CurrentCamera
 
-	hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-	hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-	hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
-	hum:ChangeState(Enum.HumanoidStateType.Physics)
+    hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+    hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+    hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
+    hum:ChangeState(Enum.HumanoidStateType.Physics)
 
-	local bv = Instance.new("BodyVelocity")
-	bv.Name = velocityHandlerName
-	bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-	bv.Velocity = Vector3.zero
-	bv.Parent = root
+    local bv = Instance.new("BodyVelocity")
+    bv.Name = velocityHandlerName
+    bv.MaxForce = Vector3.new(9e9,9e9,9e9)
+    bv.Velocity = Vector3.zero
+    bv.Parent = root
 
-	local bg = Instance.new("BodyGyro")
-	bg.Name = gyroHandlerName
-	bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-	bg.P = 1000
-	bg.D = 50
-	bg.Parent = root
+    local bg = Instance.new("BodyGyro")
+    bg.Name = gyroHandlerName
+    bg.MaxTorque = Vector3.new(9e9,9e9,9e9)
+    bg.P = 1000
+    bg.D = 50
+    bg.Parent = root
 
-	local controlModule = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule"))
+    local controlModule = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule"))
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if not flying or not root or not bv or not bg then return end
+        local moveDir = controlModule:GetMoveVector()
+        bg.CFrame = camera.CFrame
 
-	RunService.RenderStepped:Connect(function()
-		if not flying or not root or not bv or not bg then return end
-		local moveDir = controlModule:GetMoveVector()
-		bg.CFrame = camera.CFrame
+        local vel = Vector3.zero
+        if moveDir.Magnitude > 0 then
+            vel = (camera.CFrame.RightVector * moveDir.X + camera.CFrame.LookVector * -moveDir.Z) * flySpeed
+        end
+        bv.Velocity = vel
 
-		local vel = Vector3.zero
-		if moveDir.Magnitude > 0 then
-			vel = (camera.CFrame.RightVector * moveDir.X + camera.CFrame.LookVector * -moveDir.Z) * flySpeed
-		end
-		bv.Velocity = vel
-
-		if hum then
-			hum:ChangeState(Enum.HumanoidStateType.Physics)
-		end
-	end)
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Physics) end
+    end)
 end
 
 local function stopFly()
-	flying = false
-	local char = LocalPlayer.Character
-	if char then
-		local root = getRoot(char)
-		if root then
-			if root:FindFirstChild(velocityHandlerName) then root[velocityHandlerName]:Destroy() end
-			if root:FindFirstChild(gyroHandlerName) then root[gyroHandlerName]:Destroy() end
-		end
-		local hum = char:FindFirstChildWhichIsA("Humanoid")
-		if hum then
-			hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-			hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
-			hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
-			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-		end
-	end
+    flying = false
+    local char = LocalPlayer.Character
+    if char then
+        local root = getRoot(char)
+        if root then
+            if root:FindFirstChild(velocityHandlerName) then root[velocityHandlerName]:Destroy() end
+            if root:FindFirstChild(gyroHandlerName) then root[gyroHandlerName]:Destroy() end
+        end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown,true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll,true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+            hum.WalkSpeed = userWalkSpeed
+        end
+    end
 end
 
 -- // GUI Creation
 local function createGui()
-	local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
-	ScreenGui.Name = "CustomMenu"
+    local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+    ScreenGui.Name = "CustomMenu"
 
-	local MainFrame = Instance.new("Frame", ScreenGui)
-	MainFrame.Size = UDim2.new(0,250,0,350)
-	MainFrame.Position = UDim2.new(0.5,-125,0.3,0)
-	MainFrame.BackgroundColor3 = Color3.fromRGB(240,240,240)
-	MainFrame.Active = true
-	MainFrame.Draggable = true
+    local MainFrame = Instance.new("Frame", ScreenGui)
+    MainFrame.Size = UDim2.new(0,250,0,350)
+    MainFrame.Position = UDim2.new(0.5,-125,0.3,0)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(240,240,240)
+    MainFrame.Active = true
+    MainFrame.Draggable = true
 
-	local stroke = Instance.new("UIStroke", MainFrame)
-	stroke.Thickness = 5
-	stroke.Color = Color3.fromRGB(255,200,255)
+    local corner = Instance.new("UICorner", MainFrame)
+    corner.CornerRadius = UDim.new(0,15)
 
-	local corner = Instance.new("UICorner", MainFrame)
-	corner.CornerRadius = UDim.new(0,15)
+    -- Title Bar
+    local TitleBar = Instance.new("Frame", MainFrame)
+    TitleBar.Size = UDim2.new(1,0,0,40)
+    TitleBar.BackgroundTransparency = 1
 
-	-- Title
-	local TitleBar = Instance.new("Frame", MainFrame)
-	TitleBar.Size = UDim2.new(1,0,0,40)
-	TitleBar.BackgroundTransparency = 1
+    local VersionLabel = Instance.new("TextLabel", TitleBar)
+    VersionLabel.Size = UDim2.new(0.5,0,1,0)
+    VersionLabel.Position = UDim2.new(0,10,0,0)
+    VersionLabel.Text = "Versi: 0.0.1"
+    VersionLabel.Font = Enum.Font.GothamBold
+    VersionLabel.TextColor3 = Color3.fromRGB(50,50,50)
+    VersionLabel.TextScaled = true
+    VersionLabel.BackgroundTransparency = 1
+    VersionLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-	local VersionLabel = Instance.new("TextLabel", TitleBar)
-	VersionLabel.Size = UDim2.new(0.5,0,1,0)
-	VersionLabel.Position = UDim2.new(0,10,0,0)
-	VersionLabel.Text = "Versi: 0.0.1"
-	VersionLabel.Font = Enum.Font.GothamBold
-	VersionLabel.TextColor3 = Color3.fromRGB(50,50,50)
-	VersionLabel.TextScaled = true
-	VersionLabel.BackgroundTransparency = 1
-	VersionLabel.TextXAlignment = Enum.TextXAlignment.Left
+    -- Minimize Button 🏠
+    local MinBtn = Instance.new("TextButton", TitleBar)
+    MinBtn.Size = UDim2.new(0,40,0,25)
+    MinBtn.Position = UDim2.new(1,-45,0.5,-12)
+    MinBtn.Text = "🏠"
+    MinBtn.Font = Enum.Font.GothamBold
+    MinBtn.TextScaled = true
+    MinBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    MinBtn.BackgroundColor3 = Color3.fromRGB(200,100,200)
+    local minCorner = Instance.new("UICorner", MinBtn)
+    minCorner.CornerRadius = UDim.new(0,6)
 
-	local MinBtn = Instance.new("TextButton", TitleBar)
-	MinBtn.Size = UDim2.new(0,40,0,25)
-	MinBtn.Position = UDim2.new(1,-45,0.5,-12)
-	MinBtn.Text = "🏠"
-	MinBtn.Font = Enum.Font.GothamBold
-	MinBtn.TextScaled = true
-	MinBtn.TextColor3 = Color3.fromRGB(255,255,255)
-	MinBtn.BackgroundColor3 = Color3.fromRGB(200,100,200)
-	local minCorner = Instance.new("UICorner", MinBtn)
-	minCorner.CornerRadius = UDim.new(0,6)
+    -- Back Button 👈
+    local BackBtn = Instance.new("TextButton", TitleBar)
+    BackBtn.Size = UDim2.new(0,40,0,25)
+    BackBtn.Position = UDim2.new(1,-90,0.5,-12)
+    BackBtn.Text = "👈"
+    BackBtn.Font = Enum.Font.GothamBold
+    BackBtn.TextScaled = true
+    BackBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    BackBtn.BackgroundColor3 = Color3.fromRGB(200,100,200)
+    local backCorner = Instance.new("UICorner", BackBtn)
+    backCorner.CornerRadius = UDim.new(0,6)
+    BackBtn.Visible = false
 
-	-- GUI restore button (emoji 🏠)
-	local OpenLogo = Instance.new("TextButton", ScreenGui)
-	OpenLogo.Size = UDim2.new(0,50,0,50)
-	OpenLogo.Position = UDim2.new(0,20,0.5,-25)
-	OpenLogo.Text = "🏠"
-	OpenLogo.TextScaled = true
-	OpenLogo.BackgroundColor3 = Color3.fromRGB(200,100,200)
-	local logoCorner = Instance.new("UICorner", OpenLogo)
-	logoCorner.CornerRadius = UDim.new(0,12)
-	OpenLogo.Visible = false
+    -- GUI restore button 🏠
+    local OpenLogo = Instance.new("TextButton", ScreenGui)
+    OpenLogo.Size = UDim2.new(0,50,0,50)
+    OpenLogo.Position = UDim2.new(0,20,0.5,-25)
+    OpenLogo.Text = "🏠"
+    OpenLogo.TextScaled = true
+    OpenLogo.BackgroundColor3 = Color3.fromRGB(200,100,200)
+    local logoCorner = Instance.new("UICorner", OpenLogo)
+    logoCorner.CornerRadius = UDim.new(0,12)
+    OpenLogo.Visible = false
 
-	local function minimizeGUI()
-		MainFrame.Visible = false
-		OpenLogo.Visible = true
-	end
-	local function restoreGUI()
-		MainFrame.Visible = true
-		OpenLogo.Visible = false
-	end
-	MinBtn.MouseButton1Click:Connect(minimizeGUI)
-	OpenLogo.MouseButton1Click:Connect(restoreGUI)
+    MinBtn.MouseButton1Click:Connect(function()
+        MainFrame.Visible = false
+        OpenLogo.Visible = true
+    end)
+    OpenLogo.MouseButton1Click:Connect(function()
+        MainFrame.Visible = true
+        OpenLogo.Visible = false
+    end)
 
-	-- Menu Frames
-	local MenuFrame = Instance.new("Frame", MainFrame)
-	MenuFrame.Size = UDim2.new(1,0,1,0)
-	MenuFrame.BackgroundTransparency = 1
+    -- Menu Frames
+    local MenuFrame = Instance.new("Frame", MainFrame)
+    MenuFrame.Size = UDim2.new(1,0,1,0)
+    MenuFrame.BackgroundTransparency = 1
 
-	local FlyFrame = Instance.new("Frame", MainFrame)
-	FlyFrame.Size = UDim2.new(1,0,1,0)
-	FlyFrame.BackgroundTransparency = 1
-	FlyFrame.Visible = false
+    local FlyFrame = Instance.new("Frame", MainFrame)
+    FlyFrame.Size = UDim2.new(1,0,1,0)
+    FlyFrame.BackgroundTransparency = 1
+    FlyFrame.Visible = false
 
-	local SpeedFrame = Instance.new("Frame", MainFrame)
-	SpeedFrame.Size = UDim2.new(1,0,1,0)
-	SpeedFrame.BackgroundTransparency = 1
-	SpeedFrame.Visible = false
+    local SpeedFrame = Instance.new("Frame", MainFrame)
+    SpeedFrame.Size = UDim2.new(1,0,1,0)
+    SpeedFrame.BackgroundTransparency = 1
+    SpeedFrame.Visible = false
 
-	-- Button helper
-	local function makeButton(parent,text,yPos)
-		local btn = Instance.new("TextButton", parent)
-		btn.Size = UDim2.new(0.85,0,0,50)
-		btn.Position = UDim2.new(0.5,-100,0,yPos)
-		btn.Text = text
-		btn.Font = Enum.Font.GothamBold
-		btn.TextScaled = true
-		btn.TextColor3 = Color3.fromRGB(255,255,255)
-		btn.BackgroundColor3 = Color3.fromRGB(50,50,150)
-		local corner = Instance.new("UICorner",btn)
-		corner.CornerRadius = UDim.new(0,12)
-		return btn
-	end
+    -- Menu Buttons Helper
+    local function makeButton(parent,text,yPos)
+        local btn = Instance.new("TextButton", parent)
+        btn.Size = UDim2.new(0.85,0,0,50)
+        btn.Position = UDim2.new(0.5,-100,0,yPos)
+        btn.Text = text
+        btn.Font = Enum.Font.GothamBold
+        btn.TextScaled = true
+        btn.TextColor3 = Color3.fromRGB(255,255,255)
+        btn.BackgroundColor3 = Color3.fromRGB(50,50,150)
+        local corner = Instance.new("UICorner",btn)
+        corner.CornerRadius = UDim.new(0,12)
+        return btn
+    end
 
-	-- Menu utama buttons
-	local FlyBtn = makeButton(MenuFrame,"TERBANG",60)
-	local SpeedBtn = makeButton(MenuFrame,"SPEED",140)
+    local FlyBtn = makeButton(MenuFrame,"TERBANG",60)
+    local SpeedBtn = makeButton(MenuFrame,"SPEED",140)
+    local CmdsBtn = makeButton(MenuFrame,"CMDS BAR",220)
 
-	-- Fly Submenu
-	local FlyOnBtn = makeButton(FlyFrame,"ON / OFF FLY",60)
-	local FlyBackBtn = makeButton(FlyFrame,"BACK",220)
+    -- Fly ON/OFF toggle
+local FlyOnBtn = Instance.new("TextButton", FlyFrame)
+FlyOnBtn.Size = UDim2.new(0.85,0,0,50)
+FlyOnBtn.Position = UDim2.new(0.5,-100,0,60)
+FlyOnBtn.Text = "ON / OFF FLY"
+FlyOnBtn.Font = Enum.Font.GothamBold
+FlyOnBtn.TextScaled = true
+FlyOnBtn.TextColor3 = Color3.fromRGB(255,255,255)
+FlyOnBtn.BackgroundColor3 = Color3.fromRGB(50,50,150)
+local flyCorner = Instance.new("UICorner", FlyOnBtn)
+flyCorner.CornerRadius = UDim.new(0,12)
 
-	-- Speed Submenu
-	local SpeedBackBtn = makeButton(SpeedFrame,"BACK",220)
+-- Speed input
+local SpeedInput = Instance.new("TextBox", SpeedFrame)
+SpeedInput.Size = UDim2.new(0.85,0,0,50)
+SpeedInput.Position = UDim2.new(0.5,-100,0,60)
+SpeedInput.PlaceholderText = "Masukkan WalkSpeed"
+SpeedInput.Text = tostring(userWalkSpeed)
+SpeedInput.TextScaled = true
+SpeedInput.ClearTextOnFocus = false
+SpeedInput.BackgroundColor3 = Color3.fromRGB(220,220,220)
+SpeedInput.TextColor3 = Color3.fromRGB(0,0,0)
+local speedCorner = Instance.new("UICorner", SpeedInput)
+speedCorner.CornerRadius = UDim.new(0,12)
 
-	-- WalkSpeed input
-	local WalkSpeedLabel = Instance.new("TextLabel", SpeedFrame)
-	WalkSpeedLabel.Size = UDim2.new(0.8,0,0,30)
-	WalkSpeedLabel.Position = UDim2.new(0.1,0,0.4,0)
-	WalkSpeedLabel.Text = "WalkSpeed:"
-	WalkSpeedLabel.TextScaled = true
-	WalkSpeedLabel.BackgroundTransparency = 1
-	WalkSpeedLabel.TextColor3 = Color3.fromRGB(0,0,0)
+local SpeedApplyBtn = Instance.new("TextButton", SpeedFrame)
+SpeedApplyBtn.Size = UDim2.new(0.85,0,0,50)
+SpeedApplyBtn.Position = UDim2.new(0.5,-100,0,140)
+SpeedApplyBtn.Text = "APPLY WALK SPEED"
+SpeedApplyBtn.Font = Enum.Font.GothamBold
+SpeedApplyBtn.TextScaled = true
+SpeedApplyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+SpeedApplyBtn.BackgroundColor3 = Color3.fromRGB(50,50,150)
+local applyCorner = Instance.new("UICorner", SpeedApplyBtn)
+applyCorner.CornerRadius = UDim.new(0,12)
 
-	local WalkSpeedInput = Instance.new("TextBox", SpeedFrame)
-	WalkSpeedInput.Size = UDim2.new(0.5,0,0,30)
-	WalkSpeedInput.Position = UDim2.new(0.25,0,0.5,0)
-	WalkSpeedInput.Text = "16"
-	WalkSpeedInput.ClearTextOnFocus = false
-	WalkSpeedInput.TextScaled = true
-	WalkSpeedInput.TextColor3 = Color3.fromRGB(0,0,0)
-	WalkSpeedInput.BackgroundColor3 = Color3.fromRGB(200,200,200)
-	local wsCorner = Instance.new("UICorner", WalkSpeedInput)
-	wsCorner.CornerRadius = UDim.new(0,6)
+SpeedApplyBtn.MouseButton1Click:Connect(function()
+    local speed = tonumber(SpeedInput.Text)
+    if speed and speed > 0 then
+        userWalkSpeed = speed
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum and not flying then
+            hum.WalkSpeed = userWalkSpeed
+        end
+    end
+end)
 
-	-- Apply WalkSpeed on Enter
-	WalkSpeedInput.FocusLost:Connect(function(enterPressed)
-		if enterPressed then
-			local ws = tonumber(WalkSpeedInput.Text)
-			if ws then
-				local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-				if hum then hum.WalkSpeed = ws end
-			end
-		end
-	end)
+-- Fly toggle
+local flyToggled = false
+FlyOnBtn.MouseButton1Click:Connect(function()
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if flyToggled then
+        stopFly()
+        flyToggled = false
+        FlyOnBtn.Text = "ON / OFF FLY"
+        if hum then hum.WalkSpeed = userWalkSpeed end
+    else
+        startFly()
+        flyToggled = true
+        FlyOnBtn.Text = "ON / OFF FLY (ON)"
+        if hum then hum.WalkSpeed = 0 end -- matikan WalkSpeed saat fly
+    end
+end)
 
-	-- Fly buttons
-	local flyToggled = false
-	FlyOnBtn.MouseButton1Click:Connect(function()
-		if flyToggled then
-			stopFly()
-			flyToggled = false
-			FlyOnBtn.Text = "ON / OFF FLY"
-		else
-			startFly()
-			flyToggled = true
-			FlyOnBtn.Text = "ON / OFF FLY (ON)"
-		end
-	end)
-	FlyBackBtn.MouseButton1Click:Connect(function()
-		FlyFrame.Visible = false
-		MenuFrame.Visible = true
-	end)
-	FlyBtn.MouseButton1Click:Connect(function()
-		MenuFrame.Visible = false
-		FlyFrame.Visible = true
-	end)
+-- CMDS BAR GUI
+local CmdsGui = Instance.new("Frame", ScreenGui)
+CmdsGui.Size = UDim2.new(0,400,0,50)
+CmdsGui.Position = UDim2.new(0.5,-200,0.8,0)
+CmdsGui.BackgroundColor3 = Color3.fromRGB(220,220,220)
+local cmdsCorner = Instance.new("UICorner", CmdsGui)
+cmdsCorner.CornerRadius = UDim.new(0,8)
+CmdsGui.Visible = false
 
-	-- Speed buttons
-	SpeedBackBtn.MouseButton1Click:Connect(function()
-		SpeedFrame.Visible = false
-		MenuFrame.Visible = true
-	end)
-	SpeedBtn.MouseButton1Click:Connect(function()
-		MenuFrame.Visible = false
-		SpeedFrame.Visible = true
-	end)
+local CmdsInput = Instance.new("TextBox", CmdsGui)
+CmdsInput.Size = UDim2.new(0.85,0,1,0)
+CmdsInput.Position = UDim2.new(0,0,0,0)
+CmdsInput.PlaceholderText = ";fly 25"
+CmdsInput.ClearTextOnFocus = false
+CmdsInput.Text = ""
+CmdsInput.TextScaled = true
+CmdsInput.BackgroundTransparency = 1
+CmdsInput.TextColor3 = Color3.fromRGB(0,0,0)
 
-	-- Persist GUI on respawn
-	LocalPlayer.CharacterAdded:Connect(function()
-		wait(1)
-		if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer.PlayerGui end
-	end)
+local CmdsClose = Instance.new("TextButton", CmdsGui)
+CmdsClose.Size = UDim2.new(0,40,1,0)
+CmdsClose.Position = UDim2.new(0.85,0,0,0)
+CmdsClose.Text = "❌"
+CmdsClose.TextScaled = true
+CmdsClose.BackgroundColor3 = Color3.fromRGB(200,50,50)
+local closeCorner = Instance.new("UICorner", CmdsClose)
+closeCorner.CornerRadius = UDim.new(0,6)
+
+CmdsBtn.MouseButton1Click:Connect(function()
+    CmdsGui.Visible = true
+    CmdsInput:CaptureFocus()
+end)
+CmdsClose.MouseButton1Click:Connect(function()
+    CmdsGui.Visible = false
+end)
+
+-- Contoh eksekusi command sederhana dari CMDS BAR
+CmdsInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local cmd = CmdsInput.Text:lower()
+        if cmd:match(";fly (%d+)") then
+            local speedValue = tonumber(cmd:match(";fly (%d+)"))
+            if speedValue then
+                flySpeed = speedValue
+            end
+        elseif cmd:match(";speed (%d+)") then
+            local speedValue = tonumber(cmd:match(";speed (%d+)"))
+            if speedValue then
+                userWalkSpeed = speedValue
+                local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if hum and not flying then hum.WalkSpeed = userWalkSpeed end
+            end
+        end
+        CmdsInput.Text = ""
+    end
+end)
+
 end
 
 createGui()
