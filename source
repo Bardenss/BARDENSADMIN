@@ -93,54 +93,87 @@ end)
 ----------------------------------------------------------------
 -- FLY SCRIPT
 ----------------------------------------------------------------
+-- FLY SYSTEM (smooth, no jegang)
 local player = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local flying = false
-local speed = 60
-local moveDir = Vector3.zero
+local flySpeed = 60
+local ascend, descend = false, false
 
 local function startFly()
     if flying then return end
-    flying = true
-
     local char = player.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     local hrp = char.HumanoidRootPart
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
 
-    local bv = Instance.new("BodyVelocity")
-    bv.MaxForce = Vector3.new(1e5,1e5,1e5)
-    bv.Velocity = Vector3.zero
-    bv.Parent = hrp
+    flying = true
+    hum:ChangeState(Enum.HumanoidStateType.Physics)
 
-    local bg = Instance.new("BodyGyro")
-    bg.MaxTorque = Vector3.new(1e5,1e5,1e5)
-    bg.CFrame = hrp.CFrame
-    bg.P = 1e5
-    bg.Parent = hrp
+    -- Attachment
+    local att = Instance.new("Attachment", hrp)
 
-    RunService.RenderStepped:Connect(function()
+    -- VectorForce buat dorong
+    local vf = Instance.new("VectorForce")
+    vf.Attachment0 = att
+    vf.Force = Vector3.zero
+    vf.RelativeTo = Enum.ActuatorRelativeTo.World
+    vf.Parent = hrp
+
+    -- AlignOrientation buat arah sesuai kamera
+    local ao = Instance.new("AlignOrientation")
+    ao.Attachment0 = att
+    ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
+    ao.Responsiveness = 200
+    ao.Parent = hrp
+
+    -- kontrol input naik/turun
+    local keyDown = UIS.InputBegan:Connect(function(input,gp)
+        if gp then return end
+        if input.KeyCode == Enum.KeyCode.E then ascend = true end
+        if input.KeyCode == Enum.KeyCode.Q then descend = true end
+    end)
+    local keyUp = UIS.InputEnded:Connect(function(input,gp)
+        if gp then return end
+        if input.KeyCode == Enum.KeyCode.E then ascend = false end
+        if input.KeyCode == Enum.KeyCode.Q then descend = false end
+    end)
+
+    -- gerakan tiap frame
+    local hb
+    hb = RunService.Heartbeat:Connect(function()
         if not flying then
-            bv:Destroy()
-            bg:Destroy()
+            hb:Disconnect()
+            keyDown:Disconnect()
+            keyUp:Disconnect()
+            vf:Destroy()
+            ao:Destroy()
+            att:Destroy()
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
             return
         end
 
-        local camCF = workspace.CurrentCamera.CFrame
+        local cam = workspace.CurrentCamera
         local dir = Vector3.zero
-        if UIS:IsKeyDown(Enum.KeyCode.W) then dir = dir + camCF.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.S) then dir = dir - camCF.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then dir = dir - camCF.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then dir = dir + camCF.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0,1,0) end
-        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir = dir - Vector3.new(0,1,0) end
+        if UIS:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
+        if ascend then dir += Vector3.new(0,1,0) end
+        if descend then dir -= Vector3.new(0,1,0) end
 
         if dir.Magnitude > 0 then
-            dir = dir.Unit * speed
+            dir = dir.Unit * flySpeed
         end
-        bv.Velocity = dir
-        bg.CFrame = CFrame.new(hrp.Position, hrp.Position + camCF.LookVector)
+
+        -- apply gaya
+        vf.Force = (dir - hrp.AssemblyLinearVelocity) * hrp.AssemblyMass * 5
+
+        -- jaga arah sesuai kamera
+        ao.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + cam.CFrame.LookVector)
     end)
 end
 
@@ -148,6 +181,7 @@ local function stopFly()
     flying = false
 end
 
+-- contoh toggle tombol GUI
 flyBtn.MouseButton1Click:Connect(function()
     if not flying then
         startFly()
